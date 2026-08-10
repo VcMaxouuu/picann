@@ -24,6 +24,7 @@ from .models import (
 )
 
 from .utils import (
+    LeakyELU,
     gauge_scale,
     lambda_path,
 )
@@ -48,6 +49,7 @@ __all__ = [
     "SparseClassifier",
     "SparseCoxPH",
 
+    "LeakyELU",
     "gauge_scale",
     "lambda_path",
 ]

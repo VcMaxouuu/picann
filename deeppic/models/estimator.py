@@ -42,7 +42,7 @@ _ADAM_PATIENCE = 20
 _PHASE_LR_DECAY = 0.75
 
 #: Iterations between two rows of the verbose trace.
-_TRACE_EVERY = 20
+_TRACE_EVERY = 1
 
 #: Columns of that trace, and the width each is printed in.
 _TRACE_COLUMNS = (

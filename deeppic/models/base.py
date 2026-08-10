@@ -7,6 +7,7 @@ import torch
 from torch import Tensor, nn
 
 from ..optim import L1
+from ..utils.activations import LeakyELU
 
 __all__ = ["VariableSelectionMLP"]
 
@@ -33,25 +34,31 @@ class VariableSelectionMLP(nn.Module):
 
     Notes
     -----
-    The activation is :class:`~torch.nn.LeakyReLU` after every hidden layer
-    and is not configurable, for two reasons that pull the same way.
+    The activations are fixed and asymmetric:
+    :class:`~torch.nn.LeakyReLU` with slope ``0.1`` after the first linear
+    layer, :class:`~deeppic.utils.LeakyELU` with ``m = 0.1`` after every
+    later one.
 
-    It is positively homogeneous, which the gauge retraction requires: it
-    scales the first two linear layers against each other and needs the
-    module between them to satisfy :math:`\sigma(cx) = c\,\sigma(x)` for
+    The first slot is constrained: the gauge retraction scales the first
+    two linear layers against each other and needs the module between them
+    to be positively homogeneous, :math:`\sigma(cx) = c\,\sigma(x)` for
     :math:`c > 0`, or the retraction would change the function instead of
-    reparametrising it.
+    reparametrising it. LeakyReLU satisfies that; the smooth LeakyELU does
+    not, which is why it cannot sit there.
 
-    And its derivative never vanishes, which keeps the network recoverable.
-    The sensitivity the retraction normalises,
-    :math:`a = \partial f / \partial h_1`, is a product of the derivatives
-    of every activation above the first layer; a single one of them going
-    to zero everywhere sends :math:`a` to zero exactly, and with it the
-    gradient reaching :math:`W_1`. A hard ReLU does that whenever a hidden
-    layer's units are all off on the sample -- an absorbing state, since a
-    unit with no gradient cannot be switched back on -- and a saturating
-    activation such as tanh approaches it. The leak makes that product
-    incapable of vanishing.
+    Every activation's derivative is bounded away from zero -- the ``0.1``
+    slope below zero, :math:`m + (1-m)e^{x} \ge m` for LeakyELU -- which
+    keeps the network recoverable. The sensitivity the retraction
+    normalises, :math:`a = \partial f / \partial h_1`, is a product of the
+    derivatives of every activation above the first layer; a single one of
+    them going to zero everywhere sends :math:`a` to zero exactly, and
+    with it the gradient reaching :math:`W_1`. A hard ReLU does that
+    whenever a hidden layer's units are all off on the sample -- an
+    absorbing state, since a unit with no gradient cannot be switched back
+    on -- and a saturating activation such as tanh approaches it. Above
+    the first layer the homogeneity constraint lifts, and LeakyELU adds
+    what LeakyReLU cannot: a :math:`C^1` map, sparing the descent the
+    kinks of a piecewise-linear landscape.
     """
 
     def __init__(
@@ -112,12 +119,17 @@ class VariableSelectionMLP(nn.Module):
                 )
             )
 
-            # No activation after the output layer; LeakyReLU after every
-            # other one. See the class notes: the retraction needs positive
-            # homogeneity, and the sensitivity needs a derivative that
-            # cannot vanish.
+            # No activation after the output layer. The first activation
+            # must be positively homogeneous for the gauge retraction, so
+            # LeakyReLU; above it the constraint lifts and the smooth
+            # LeakyELU takes over. Both keep their derivative bounded away
+            # from zero. See the class notes.
             if not is_output_layer:
-                modules.append(nn.LeakyReLU())
+                modules.append(
+                    nn.LeakyReLU(negative_slope=0.1)
+                    if layer_index == 0
+                    else LeakyELU(0.1)
+                )
 
         return nn.Sequential(*modules)
 
