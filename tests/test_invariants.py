@@ -48,15 +48,20 @@ def test_fit_calibrates_and_fits_on_the_same_design(monkeypatch, dtype):
         seen.append(("calibrate", Z))
         return calibrate(Z, *args, **kwargs)
 
-    def spy_phase(Z, target, lam, tol, n_epochs):
+    finals = []
+
+    def spy_phase(Z, target, lam, tol, n_epochs, final):
         seen.append(("phase", Z))
+        finals.append(final)
         return torch.empty(0)
 
     monkeypatch.setattr(model, "calibrate", spy_calibrate)
-    monkeypatch.setattr(model, "fit_phase", spy_phase)
+    monkeypatch.setattr(model, "_fit_phase", spy_phase)
     model.fit(X, y, generator=torch.Generator().manual_seed(0))
 
     assert [name for name, _ in seen] == ["calibrate"] + ["phase"] * model.n_phases
+    # the dropped columns are tested at the calibrated level when the path ends
+    assert finals == [False] * (model.n_phases - 1) + [True]
     design = seen[0][1]
     assert design.dtype == dtype
     assert_close(design.mean(dim=0), torch.zeros(5, dtype=dtype), rtol=0.0, atol=1e-5)

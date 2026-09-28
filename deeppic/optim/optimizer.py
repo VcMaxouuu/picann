@@ -37,6 +37,11 @@ class ProxGenAdam(Optimizer):
     \max(|w| - \tau, 0)`. A coordinate Adam moves cautiously is thresholded as
     cautiously.
 
+    A group with :math:`\beta_1 = 0` keeps no first moment: :math:`\hat m` is
+    the gradient itself, and the step is a proximal RMSProp step. A zero
+    coordinate then stays at zero if and only if :math:`|g| \leq \lambda
+    \omega`, whatever :math:`D`, on the gradient of the current step.
+
     The penalty stands in for any weight decay, and the loss the closure returns
     must hold no penalty term of its own, or the level is applied twice.
 
@@ -117,6 +122,13 @@ class ProxGenAdam(Optimizer):
     ) -> Tensor | None:
         r"""Take one Adam step, then apply the proximal operator.
 
+        The bias corrections are folded into scalars, as in
+        :class:`torch.optim.Adam`: :math:`D = \mathrm{lr}_t / (\sqrt{v} /
+        \sqrt{1 - \beta_2^t} + \varepsilon)` with :math:`\mathrm{lr}_t =
+        \mathrm{lr} / (1 - \beta_1^t)`, the same step as with the corrected
+        moments. The moments of all the parameters of a group are updated at
+        once.
+
         :param closure: callable re-evaluating the model and returning the loss.
         :return: the loss the closure returned, or ``None`` if none was given.
         :raises RuntimeError: if a parameter carries a sparse gradient.
@@ -127,49 +139,83 @@ class ProxGenAdam(Optimizer):
                 loss = closure()
 
         for group in self.param_groups:
-            lr = group["lr"]
             beta1, beta2 = group["betas"]
-            eps = group["eps"]
-            lam = group["lam"]
-            penalty_weights = group["penalty_weights"]
-            bias_correction = group["bias_correction"]
-
+            params, grads, exp_avgs, exp_avg_sqs, steps = [], [], [], [], []
             for parameter in group["params"]:
                 if parameter.grad is None:
                     continue
-
-                grad = parameter.grad
-                if grad.is_sparse:
+                if parameter.grad.is_sparse:
                     raise RuntimeError("ProxGenAdam does not support sparse gradients.")
 
                 state = self.state[parameter]
                 if len(state) == 0:
                     state["step"] = 0
-                    state["exp_avg"] = torch.zeros_like(parameter)
                     state["exp_avg_sq"] = torch.zeros_like(parameter)
-
+                if beta1 > 0.0 and "exp_avg" not in state:
+                    state["exp_avg"] = torch.zeros_like(parameter)
                 state["step"] += 1
-                t = state["step"]
-                m = state["exp_avg"]
-                v = state["exp_avg_sq"]
 
-                m.mul_(beta1).add_(grad, alpha=1.0 - beta1)
-                v.mul_(beta2).addcmul_(grad, grad, value=1.0 - beta2)
-
-                if bias_correction:
-                    m_used = m / (1.0 - beta1**t)
-                    v_used = v / (1.0 - beta2**t)
-                else:
-                    m_used = m
-                    v_used = v
-
-                denom = v_used.sqrt().add(eps)
-                parameter.addcdiv_(m_used, denom, value=-lr)
-
-                if lam > 0.0:
-                    threshold = (lr / denom) * (lam * penalty_weights)
-                    parameter.copy_(
-                        parameter.sign() * (parameter.abs() - threshold).clamp_min(0.0)
-                    )
+                params.append(parameter)
+                grads.append(parameter.grad)
+                exp_avg_sqs.append(state["exp_avg_sq"])
+                steps.append(state["step"])
+                if beta1 > 0.0:
+                    exp_avgs.append(state["exp_avg"])
+            if params:
+                self._update(group, params, grads, exp_avgs, exp_avg_sqs, steps)
 
         return loss
+
+    @staticmethod
+    def _update(
+        group: dict[str, Any],
+        params: list[Tensor],
+        grads: list[Tensor],
+        exp_avgs: list[Tensor],
+        exp_avg_sqs: list[Tensor],
+        steps: list[int],
+    ) -> None:
+        r"""Update the moments of a group, then its parameters.
+
+        :param group: parameter group, with its hyperparameters.
+        :param params: parameters of the group that carry a gradient.
+        :param grads: their gradients.
+        :param exp_avgs: their first moments, empty if :math:`\beta_1 = 0`.
+        :param exp_avg_sqs: their second moments.
+        :param steps: number of steps each has taken, this one included.
+        """
+        lr, eps, lam = group["lr"], group["eps"], group["lam"]
+        beta1, beta2 = group["betas"]
+
+        if group["bias_correction"]:
+            step_sizes = [lr / (1.0 - beta1**t) for t in steps]
+            corrections = [math.sqrt(1.0 - beta2**t) for t in steps]
+        else:
+            step_sizes = [lr] * len(steps)
+            corrections = [1.0] * len(steps)
+
+        torch._foreach_mul_(exp_avg_sqs, beta2)
+        torch._foreach_addcmul_(exp_avg_sqs, grads, grads, value=1.0 - beta2)
+        if beta1 > 0.0:
+            torch._foreach_mul_(exp_avgs, beta1)
+            torch._foreach_add_(exp_avgs, grads, alpha=1.0 - beta1)
+            moments = exp_avgs
+        else:
+            moments = grads
+
+        denoms = torch._foreach_sqrt(exp_avg_sqs)
+        torch._foreach_div_(denoms, corrections)
+        torch._foreach_add_(denoms, eps)
+
+        if lam == 0.0:
+            torch._foreach_addcdiv_(params, moments, denoms, [-size for size in step_sizes])
+            return
+
+        level = lam * group["penalty_weights"]
+        for parameter, moment, denom, size in zip(params, moments, denoms, step_sizes):
+            # D = lr_t / denom, then W <- Soft_{D lam w}(W - D m), where
+            # Soft_tau(x) = x - clamp(x, -tau, tau) is exactly zero for |x| <= tau.
+            step = denom.reciprocal_().mul_(size)
+            parameter.addcmul_(moment, step, value=-1.0)
+            threshold = step.mul_(level)
+            parameter.sub_(parameter.clamp(-threshold, threshold))

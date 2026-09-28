@@ -28,6 +28,12 @@ normal :math:`\nabla s_k`, weighted by its Lagrange multiplier
 :math:`\mu_k = \lambda \|W^{(1)}_{k \cdot}\|_1`, and every step ends on the
 constraint again. A variable leaves the network exactly when its column of
 :math:`W^{(1)}` is zero.
+
+A column a phase leaves at zero is dropped from the next one, which computes
+with the other columns only, and is taken back if its zero fails the
+first-order condition of the lasso, the very test the calibration of
+:math:`\lambda` rests on. Every column dropped at the end of the fit passes
+that test at the calibrated level.
 """
 
 from __future__ import annotations
@@ -39,7 +45,7 @@ from typing import Self, cast
 
 import torch
 from torch import Generator, Tensor
-from torch.nn import LeakyReLU, Linear, Module, Sequential
+from torch.nn import LeakyReLU, Linear, Module, Parameter, Sequential, functional
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from deeppic.loss.loss import Loss
@@ -50,18 +56,27 @@ from deeppic.utils.path import geometric_path
 __all__ = ["SelectionMLP"]
 
 
-# Convergence is checked every _CHECK_EVERY epochs only: every check reads
-# values back to the host, which synchronises the device.
+# On an accelerator, convergence is checked every _CHECK_EVERY epochs only:
+# every check reads values back to the host, which synchronises the device.
 _CHECK_EVERY = 10
 # A phase stops once the objective has moved, relatively, by at most the
 # tolerance over the last _WINDOW epochs.
 _WINDOW = 50
-# The learning rate is halved once the objective has not improved for
-# _PATIENCE epochs, never below _MIN_LR_RATIO times its start.
+# The learning rate is halved once the checks have seen the objective go more
+# than _PATIENCE epochs without improving, never below _MIN_LR_RATIO times its
+# start.
 _PATIENCE = 30
 _MIN_LR_RATIO = 1e-2
 # Moments of the optimiser, with the power of the gradient they scale like.
 _MOMENTS = (("exp_avg", 1), ("exp_avg_sq", 2))
+# A phase that ends with dropped columns failing the first-order condition is
+# run again with them; the last of these runs takes every column.
+_MAX_KKT_ROUNDS = 5
+
+
+def _check_every(device: torch.device) -> int:
+    """Return the number of epochs between two convergence checks on ``device``."""
+    return _CHECK_EVERY
 
 _TRACE_COLUMNS = (
     ("iter", 5),
@@ -282,22 +297,39 @@ class SelectionMLP(Module):
             reaching.append(((layer.weight != 0.0) & reaching[-1].unsqueeze(-1)).any(dim=0))
         return reaching[::-1]
 
-    def _forward_with_preactivations(self, X: Tensor) -> tuple[Tensor, list[Tensor]]:
-        r"""Compute the linear predictor and keep the pre-activations of the
-        hidden layers.
+    def _layers_above(self, h1: Tensor) -> tuple[Tensor, list[Tensor]]:
+        r"""Run the network from the pre-activation of its first layer.
 
-        :param X: standardised design matrix, of shape ``(n, p)``.
-        :return: linear predictor :math:`\eta`, of shape ``(n,)``, attached to
-            the graph, and the pre-activations :math:`h^{(1)}, \dots,
-            h^{(L-1)}`, empty for a linear model.
+        :param h1: pre-activation :math:`h^{(1)}`, of shape ``(n, p_1)``.
+        :return: linear predictor :math:`\eta`, of shape ``(n,)``, and the
+            pre-activations :math:`h^{(1)}, \dots, h^{(L-1)}` of the hidden
+            layers, empty for a linear model.
         """
-        preactivations = []
-        h = X
-        for module in self.layers:
+        preactivations = [h1]
+        h = h1
+        for module in self.layers[1:]:
             h = module(h)
             if isinstance(module, Linear):
                 preactivations.append(h)
         return h.squeeze(-1), preactivations[:-1]
+
+    def _forward_with_preactivations(
+        self, X: Tensor, weight: Tensor | None = None
+    ) -> tuple[Tensor, list[Tensor]]:
+        r"""Compute the linear predictor and keep the pre-activations of the
+        hidden layers.
+
+        :param X: standardised design matrix, of shape ``(n, p)``, or the
+            columns of it that ``weight`` reads.
+        :param weight: weights standing for :math:`W^{(1)}`, one column per
+            column of ``X``; ``None`` uses :math:`W^{(1)}` itself.
+        :return: linear predictor :math:`\eta`, of shape ``(n,)``, attached to
+            the graph, and the pre-activations :math:`h^{(1)}, \dots,
+            h^{(L-1)}`, empty for a linear model.
+        """
+        first = self.selector
+        h1 = functional.linear(X, first.weight if weight is None else weight, first.bias)
+        return self._layers_above(h1)
 
     def _masks(
         self, preactivations: list[Tensor], rows: Tensor | None = None
@@ -316,7 +348,7 @@ class SelectionMLP(Module):
         masks = []
         for h, slope in zip(preactivations, self._slopes):
             h = h.detach() if rows is None else h.detach()[rows]
-            masks.append((h > 0.0).to(h.dtype) * (1.0 - slope) + slope)
+            masks.append((h > 0.0).to(h.dtype).mul_(1.0 - slope).add_(slope))
         return masks
 
     def _jacobian(self, masks: list[Tensor]) -> Tensor:
@@ -341,22 +373,24 @@ class SelectionMLP(Module):
 
         With the masks frozen and the biases dropped, the network at
         observation :math:`i` is the linear map
-        :math:`u \mapsto \mathbf{a}_i^\top u`, so that
+        :math:`u \mapsto \mathbf{a}_i^\top u`. One virtual row per unit
+        :math:`k`, read at the observation :math:`i^*_k` attaining
+        :math:`s_k` and fed :math:`u^{(k)} = \mu_k \operatorname{sign}(a_{i^*_k
+        k}) \, e_k`, gives
 
         .. math::
-            \sum_{i \in I^*} \mathbf{a}_i^\top u^{(i)}
-            = \lambda \sum_k \|W^{(1)}_{k \cdot}\|_1 \, s_k
+            \sum_k \mathbf{a}_{i^*_k}^\top u^{(k)} = \sum_k \mu_k s_k,
+            \qquad \mu_k = \lambda \|W^{(1)}_{k \cdot}\|_1,
 
-        when :math:`u^{(i)}_k = \lambda \|W^{(1)}_{k \cdot}\|_1
-        \operatorname{sign}(a_{ik})` for the units :math:`k` whose maximum is
-        attained at :math:`i`. Its gradient reaches :math:`W^{(2)}, \dots,
-        W^{(L)}` only.
+        whose gradient is :math:`\sum_k \mu_k \nabla s_k` and reaches
+        :math:`W^{(2)}, \dots, W^{(L)}` only. Two units may share an
+        observation: the rows are summed, so the repetition is harmless.
 
-        :param masks: masks of the hidden layers at the observations of
-            :math:`I^*`.
-        :param U: virtual inputs, one row per observation of :math:`I^*`, of
-            shape ``(|I^*|, p_1)``.
-        :return: the scalar :math:`\sum_{i \in I^*} \mathbf{a}_i^\top u^{(i)}`.
+        :param masks: masks of the hidden layers at the observations the
+            virtual rows are read at, one row each.
+        :param U: virtual inputs, one row per virtual row, of shape
+            ``(rows, p_1)``.
+        :return: the scalar :math:`\sum_r \mathbf{a}_{i_r}^\top U_{r \cdot}`.
         """
         linears = self._linears
         v = U * masks[0]
@@ -377,71 +411,86 @@ class SelectionMLP(Module):
         :param X: standardised design matrix, of shape ``(n, p)``.
         :return: :math:`s(\theta)`, of shape ``(p_1,)``.
         """
-        _, preactivations = self._forward_with_preactivations(X)
+        return self._sensitivity(X)
+
+    @torch.no_grad()
+    def _sensitivity(self, X: Tensor, weight: Tensor | None = None) -> Tensor:
+        r"""Compute :math:`s(\theta)`, possibly on the active columns only.
+
+        :param X: standardised design matrix, or the columns ``weight`` reads.
+        :param weight: weights standing for :math:`W^{(1)}`; ``None`` uses
+            :math:`W^{(1)}` itself.
+        :return: :math:`s(\theta)`, of shape ``(p_1,)``.
+        """
+        _, preactivations = self._forward_with_preactivations(X, weight)
         if not preactivations:
             return self.selector.weight.new_ones(1)
         return self._jacobian(self._masks(preactivations)).abs().amax(dim=0)
 
-    def _backward(self, X: Tensor, y: Tensor, lam: float) -> tuple[Tensor, Tensor]:
+    def _backward(
+        self, X: Tensor, y: Tensor, lam: float, weight: Tensor | None = None
+    ) -> tuple[Tensor, Tensor]:
         r"""Fill the gradients of the objective and return the loss and the
         sensitivity at the current iterate.
 
-        1. One forward and one backward pass of the loss leave
-           :math:`\nabla \ell` in every parameter and, on the way,
-           :math:`G = \partial \ell / \partial h^{(1)}` and
-           :math:`r = \partial \ell / \partial \eta`.
-        2. Every observation goes through the network on its own, whatever the
-           loss, so :math:`a_{ik} = G_{ik} / r_i`: the sensitivity and the
-           observation :math:`i^*_k` attaining every maximum come at no extra
-           cost. The rows where :math:`r_i` vanishes are recomputed.
-        3. One forward and one backward pass of the linearised network on the
-           at most :math:`p_1` observations of :math:`I^* = \{i^*_k\}` add
-           :math:`\lambda \sum_k \|W^{(1)}_{k \cdot}\|_1 \nabla s_k` to
-           :math:`W^{(2)}, \dots, W^{(L)}`: the normal of the constraint
-           :math:`s_k = 1`, weighted by its multiplier.
+        1. The forward pass of the loss also yields the masks
+           :math:`D^{(l)}_i`, hence :math:`a_{ik} = \partial \eta_i / \partial
+           h^{(1)}_{ik}` on every row, at the cost of a forward pass of the
+           layers above the first one, and with it :math:`s_k` and the
+           observation :math:`i^*_k` attaining it. Every observation goes
+           through the network on its own, so :math:`a` is also
+           :math:`G / r`, with :math:`G = \partial \ell / \partial h^{(1)}` and
+           :math:`r = \partial \ell / \partial \eta`, but that ratio is
+           undefined where :math:`r_i = 0`, a saturated probability for one.
+        2. The linearised network, read on the :math:`p_1` rows
+           :math:`i^*_1, \dots, i^*_{p_1}`, outputs :math:`\sum_k \mu_k s_k`
+           with :math:`\mu_k = \lambda \|W^{(1)}_{k \cdot}\|_1`.
+        3. One backward pass of the loss plus that output leaves
+           :math:`\nabla \ell` in every parameter and adds
+           :math:`\sum_k \mu_k \nabla s_k` to :math:`W^{(2)}, \dots, W^{(L)}`:
+           the normal of the constraint :math:`s_k = 1`, weighted by its
+           multiplier.
 
         :math:`W^{(1)}` receives :math:`\nabla \ell` only: its penalty is left to
-        the proximal step.
+        the proximal step. Every shape is fixed and no branch depends on a
+        value, so the device never waits for the host.
 
-        :param X: standardised design matrix, of shape ``(n, p)``.
+        :param X: standardised design matrix, of shape ``(n, p)``, or the
+            columns ``weight`` reads.
         :param y: targets, of shape ``(n,)``.
         :param lam: level :math:`\lambda^{(m)}` of the phase.
+        :param weight: weights standing for :math:`W^{(1)}`; ``None`` uses
+            :math:`W^{(1)}` itself.
         :return: detached loss, and detached sensitivity :math:`s(\theta^t)`, of
             shape ``(p_1,)``.
         """
-        w1 = self.selector.weight
-        eta, preactivations = self._forward_with_preactivations(X)
+        w1 = self.selector.weight if weight is None else weight
+        eta, preactivations = self._forward_with_preactivations(X, w1)
         loss = self.loss(eta, y)
         if not preactivations:
             loss.backward()
             return loss.detach(), w1.new_ones(1)
 
-        h1 = preactivations[0]
-        h1.retain_grad()
-        eta.retain_grad()
-        loss.backward()
-
         with torch.no_grad():
-            r = cast(Tensor, eta.grad)
-            a = cast(Tensor, h1.grad) / r.unsqueeze(-1)
-            degenerate = ~(r.abs() > torch.finfo(r.dtype).eps * r.abs().max())
-            if degenerate.any():
-                rows = degenerate.nonzero(as_tuple=True)[0]
-                a[rows] = self._jacobian(self._masks(preactivations, rows))
-            s, argmax = a.abs().max(dim=0)
+            masks = self._masks(preactivations)
+            a = self._jacobian(masks)
+            s, rows = a.abs().max(dim=0)
 
+        objective = loss
         if lam > 0.0:
             with torch.no_grad():
-                rows, inverse = argmax.unique(return_inverse=True)
-                units = torch.arange(argmax.numel(), device=argmax.device)
-                U = a.new_zeros(rows.numel(), argmax.numel())
-                U[inverse, units] = lam * w1.abs().sum(dim=1) * a[argmax, units].sign()
-            self._linearised_output(self._masks(preactivations, rows), U).backward()
+                signs = a.gather(0, rows.unsqueeze(0)).squeeze(0).sign()
+                U = torch.diag(lam * w1.abs().sum(dim=1) * signs)
+            multiplier = self._linearised_output([mask[rows] for mask in masks], U)
+            objective = loss + multiplier
+        objective.backward()
 
         return loss.detach(), s
 
     @torch.no_grad()
-    def _retract(self, s: Tensor, optimizer: ProxGenAdam) -> Tensor:
+    def _retract(
+        self, s: Tensor, optimizer: ProxGenAdam, weight: Tensor | None = None
+    ) -> Tensor:
         r"""Bring the iterate back onto the constraint :math:`s_k = 1`.
 
         Unit :math:`k` is rescaled by :math:`c_k = s_k`:
@@ -462,17 +511,21 @@ class SelectionMLP(Module):
         oversized step would make the loss spike.
 
         A unit whose sensitivity vanishes is left alone: its rescaling is
-        undefined.
+        undefined. Only the moments the optimiser keeps are moved: the group of
+        :math:`W^{(1)}` has no first moment.
 
         :param s: sensitivity at the current iterate, of shape ``(p_1,)``.
         :param optimizer: optimiser of the phase.
+        :param weight: weights standing for :math:`W^{(1)}`; ``None`` uses
+            :math:`W^{(1)}` itself.
         :return: the sensitivity on the constraint, one on every unit whose
             sensitivity does not vanish.
         """
         first, second = self._linears[:2]
+        w1 = first.weight if weight is None else weight
         c = torch.where(s > 0.0, s, torch.ones_like(s))
 
-        targets = [(first.weight, c.unsqueeze(-1)), (second.weight, c.reciprocal())]
+        targets = [(w1, c.unsqueeze(-1)), (second.weight, c.reciprocal())]
         if first.bias is not None:
             targets.append((first.bias, c))
 
@@ -483,14 +536,14 @@ class SelectionMLP(Module):
             state = optimizer.state.get(parameter, {})
             for key, power in _MOMENTS:
                 if key in state:
-                    state[key].div_(factor**power)
+                    state[key].div_(factor if power == 1 else factor**power)
         return s / c
 
     # ------------------------------------------------------------------
     # Fit
     # ------------------------------------------------------------------
 
-    def _optimizer(self, lam: float) -> ProxGenAdam:
+    def _optimizer(self, lam: float, weight: Tensor | None = None) -> ProxGenAdam:
         r"""Build the optimiser of a phase at the level :math:`\lambda^{(m)}`.
 
         :math:`W^{(1)}` has a group of its own, penalised at ``lam`` and without
@@ -500,12 +553,15 @@ class SelectionMLP(Module):
         plain Adam step, with no penalty and no weight decay.
 
         :param lam: level :math:`\lambda^{(m)}` of the phase.
+        :param weight: weights standing for :math:`W^{(1)}`; ``None`` uses
+            :math:`W^{(1)}` itself.
         :return: optimiser whose first group holds :math:`W^{(1)}` alone.
         """
         w1 = self.selector.weight
         others = [parameter for parameter in self.parameters() if parameter is not w1]
+        penalised = w1 if weight is None else weight
         return ProxGenAdam(
-            [{"params": [w1], "lam": lam, "betas": (0.0, 0.999)}, {"params": others}],
+            [{"params": [penalised], "lam": lam, "betas": (0.0, 0.999)}, {"params": others}],
             self.lr,
         )
 
@@ -564,29 +620,191 @@ class SelectionMLP(Module):
            :math:`\lambda^{(m)}`, in its own parameter group and without
            momentum, and the other parameters a plain Adam step.
 
-        Every :data:`_CHECK_EVERY` epochs, the phase stops once the objective
-        has moved, relatively, by at most ``tol`` over the last
-        :data:`_WINDOW` epochs, and the scheduler is stepped. The window
+        The phase stops once the objective has moved, relatively, by at most
+        ``tol`` over the last :data:`_WINDOW` epochs, which is checked, and the
+        scheduler stepped, every :func:`_check_every` epochs. The window
         averages out the oscillations of the steps, and the floor of the
         learning rate keeps a stalled objective from passing for a converged
-        one.
+        one. The phase always ends on the constraint.
+
+        Only the active columns of :math:`W^{(1)}` are computed with: the ones
+        that are not zero when the phase starts, every one from a dense start,
+        and the zero ones whose first-order condition at
+        :math:`\lambda^{(m)}` fails there (:meth:`_violations`). When the phase
+        ends, the dropped columns are tested again, and those that fail are
+        taken back for another run of the phase, from where it stopped; after
+        :data:`_MAX_KKT_ROUNDS` runs, the last one takes every column. Every
+        dropped column therefore passes, at the end, the test a proximal step
+        on the whole of :math:`W^{(1)}` would put it to: the fixed points of
+        the phase are the ones it would have without dropping anything.
+        Within :meth:`fit`, only the last phase, at the calibrated level, ends
+        with this test: an earlier phase hands its dropped columns to the next
+        one, which tests them at its own level when it starts.
 
         :param X: standardised design matrix, of shape ``(n, p)``.
         :param y: targets, of shape ``(n,)``.
         :param lam: level :math:`\lambda^{(m)}` the phase runs at.
         :param tol: relative change of the objective over :data:`_WINDOW`
             epochs below which the phase stops.
-        :param n_epochs: number of gradient steps the phase may take; a phase
-            that reaches it without stopping raises a :class:`RuntimeWarning`.
-        :return: objective on the constraint at every epoch, of shape
-            ``(epochs taken,)``.
+        :param n_epochs: number of gradient steps each run of the phase may
+            take; a run that reaches it without stopping raises a
+            :class:`RuntimeWarning`.
+        :return: objective on the constraint at every epoch of every run, in
+            order, of shape ``(epochs taken,)``.
         """
-        w1 = self.selector.weight
-        optimizer = self._optimizer(lam)
+        return self._fit_phase(X, y, lam, tol, n_epochs, final=True)
+
+    def _fit_phase(
+        self,
+        X: Tensor,
+        y: Tensor,
+        lam: float,
+        tol: float,
+        n_epochs: int,
+        final: bool,
+    ) -> Tensor:
+        r"""Run one phase, as :meth:`fit_phase` documents.
+
+        :param X: standardised design matrix, of shape ``(n, p)``.
+        :param y: targets, of shape ``(n,)``.
+        :param lam: level :math:`\lambda^{(m)}` the phase runs at.
+        :param tol: relative change of the objective over :data:`_WINDOW`
+            epochs below which the phase stops.
+        :param n_epochs: number of gradient steps each run of the phase may
+            take.
+        :param final: whether the dropped columns are tested when the phase
+            ends, and taken back for another run if they fail.
+        :return: objective on the constraint at every epoch of every run.
+        """
+        with torch.no_grad():
+            active = (self.selector.weight != 0.0).any(dim=0)
+        if not bool(active.all()):
+            active = active | self._violations(X, y, lam, active)
+        histories = [self._run_phase(X, y, lam, tol, n_epochs, active)]
+
+        for run in range(1, _MAX_KKT_ROUNDS + 1):
+            if not final or bool(active.all()):
+                break
+            violations = self._violations(X, y, lam, active)
+            if not bool(violations.any()):
+                break
+            if self.verbose:
+                print(
+                    f"    {int(violations.sum())} dropped column(s) fail the "
+                    f"first-order condition: run {run + 1} of the phase"
+                )
+            if run == _MAX_KKT_ROUNDS:
+                active = torch.ones_like(active)
+            else:
+                active = active | violations
+            histories.append(self._run_phase(X, y, lam, tol, n_epochs, active))
+        return torch.cat(histories)
+
+    def _violations(self, X: Tensor, y: Tensor, lam: float, active: Tensor) -> Tensor:
+        r"""Find the dropped columns of :math:`W^{(1)}` whose zero fails the
+        first-order condition at the level ``lam``.
+
+        A dropped column :math:`j` is zero, and a proximal step at level
+        :math:`\lambda` on the whole of :math:`W^{(1)}` keeps it there if and
+        only if :math:`|g_{kj}| \leq \lambda s_k` for every unit :math:`k`, where
+        :math:`\mathbf{g}_{\cdot j} = G^\top X_j` and :math:`G = \partial \ell /
+        \partial h^{(1)}`: the zero-thresholding test of the calibration. The
+        dropped columns do not enter :math:`h^{(1)}`, so one pass through the
+        active network and one product with the dropped columns suffice.
+
+        :param X: standardised design matrix, of shape ``(n, p)``.
+        :param y: targets, of shape ``(n,)``.
+        :param lam: level :math:`\lambda` of the test.
+        :param active: mask of the columns computed with, of shape ``(p,)``;
+            every other column of :math:`W^{(1)}` is zero.
+        :return: mask of the dropped columns that fail the test, of shape
+            ``(p,)``.
+        """
+        first = self.selector
+        with torch.no_grad():
+            h1 = functional.linear(X[:, active], first.weight[:, active], first.bias)
+        h1.requires_grad_()
+        eta, preactivations = self._layers_above(h1)
+        (G,) = torch.autograd.grad(self.loss(eta, y), h1)
+
+        with torch.no_grad():
+            if preactivations:
+                s = self._jacobian(self._masks(preactivations)).abs().amax(dim=0)
+            else:
+                s = G.new_ones(1)
+            dropped = ~active
+            scores = G.T @ X[:, dropped]
+            violations = torch.zeros_like(active)
+            violations[dropped] = (scores.abs() > lam * s.unsqueeze(-1)).any(dim=0)
+        return violations
+
+    def _run_phase(
+        self,
+        X: Tensor,
+        y: Tensor,
+        lam: float,
+        tol: float,
+        n_epochs: int,
+        active: Tensor,
+    ) -> Tensor:
+        r"""Run the epochs of a phase on the active columns of :math:`W^{(1)}`.
+
+        With columns dropped, the active columns of ``X`` are gathered once
+        and the phase works on a copy of the active columns of
+        :math:`W^{(1)}`, written back when it ends; the dropped columns stay at
+        zero. :attr:`selector` keeps its full shape throughout.
+
+        :param X: standardised design matrix, of shape ``(n, p)``.
+        :param y: targets, of shape ``(n,)``.
+        :param lam: level :math:`\lambda^{(m)}` the phase runs at.
+        :param tol: relative change of the objective over :data:`_WINDOW`
+            epochs below which the phase stops.
+        :param n_epochs: number of gradient steps the run may take.
+        :param active: mask of the columns computed with, of shape ``(p,)``.
+        :return: objective on the constraint at every epoch of the run.
+        """
+        first = self.selector
+        pruned = not bool(active.all())
+        if pruned:
+            X = X[:, active]
+            w1 = Parameter(first.weight.detach()[:, active].clone())
+        else:
+            w1 = first.weight
+        try:
+            return self._descend(X, y, lam, tol, n_epochs, w1)
+        finally:
+            if pruned:
+                with torch.no_grad():
+                    first.weight[:, active] = w1
+
+    def _descend(
+        self,
+        X: Tensor,
+        y: Tensor,
+        lam: float,
+        tol: float,
+        n_epochs: int,
+        w1: Tensor,
+    ) -> Tensor:
+        r"""Take the steps of a run, from the current iterate, until the
+        objective settles or the budget runs out.
+
+        :param X: standardised design matrix, or its active columns.
+        :param y: targets, of shape ``(n,)``.
+        :param lam: level :math:`\lambda^{(m)}` the phase runs at.
+        :param tol: relative change of the objective over :data:`_WINDOW`
+            epochs below which the run stops.
+        :param n_epochs: number of gradient steps the run may take.
+        :param w1: weights standing for :math:`W^{(1)}`, one column per
+            column of ``X``.
+        :return: objective on the constraint at every epoch of the run.
+        """
+        check_every = _check_every(X.device)
+        optimizer = self._optimizer(lam, w1)
         scheduler = ReduceLROnPlateau(
             optimizer,
             factor=0.5,
-            patience=_PATIENCE // _CHECK_EVERY,
+            patience=_PATIENCE // check_every,
             min_lr=self.lr * _MIN_LR_RATIO,
         )
         penalized = optimizer.param_groups[0]
@@ -597,15 +815,15 @@ class SelectionMLP(Module):
         change = math.inf
         for epoch in range(n_epochs):
             optimizer.zero_grad()
-            loss, s = self._backward(X, y, lam)
+            loss, s = self._backward(X, y, lam, w1)
             if hidden:
-                s = self._retract(s, optimizer)
+                s = self._retract(s, optimizer, w1)
             with torch.no_grad():
                 penalty = lam * torch.dot(s, w1.abs().sum(dim=1))
             history[epoch] = value = loss + penalty
 
             converged = False
-            if (epoch + 1) % _CHECK_EVERY == 0:
+            if (epoch + 1) % check_every == 0:
                 if epoch >= _WINDOW:
                     moved = (history[epoch - _WINDOW] - value).abs()
                     change = float(moved / value.abs().clamp_min(tiny))
@@ -614,11 +832,12 @@ class SelectionMLP(Module):
 
             last = converged or epoch + 1 == n_epochs
             if self.verbose and (epoch == 0 or last or (epoch + 1) % self.log_every == 0):
+                live = self._reaching_output()[0].unsqueeze(-1)
                 print(
                     f"    {epoch + 1:>5d}  {float(loss):>10.4f}"
                     f"  {float(penalty):>10.4f}  {float(value):>11.4f}"
                     f"  {penalized['lr']:>9.1e}  {change:>9.2e}"
-                    f"  {int(self.selected.sum()):>4d}"
+                    f"  {int(((w1 != 0.0) & live).any(dim=0).sum()):>4d}"
                 )
             if converged:
                 if self.verbose:
@@ -632,13 +851,13 @@ class SelectionMLP(Module):
             # The budget ran out right after a step: hand back the representative
             # on the constraint all the same.
             optimizer.zero_grad()
-            self._retract(self.sensitivity(X), optimizer)
+            self._retract(self._sensitivity(X, w1), optimizer, w1)
         warnings.warn(
             f"phase at lambda = {lam:.3e} stopped after {n_epochs} epochs without "
             f"converging: relative change of the objective {change:.2e} over "
             f"{_WINDOW} epochs, tol {tol:.1e}",
             RuntimeWarning,
-            stacklevel=2,
+            stacklevel=5,
         )
         return history
 
@@ -727,7 +946,10 @@ class SelectionMLP(Module):
                 f"{self.lr * _MIN_LR_RATIO:.2e}\n"
                 f"Stop        relative change of the objective over {_WINDOW} "
                 f"epochs <= tol ({100 * self.tol:.1e}, last phase "
-                f"{self.tol:.1e}), checked every {_CHECK_EVERY} epochs\n"
+                f"{self.tol:.1e}), checked every {_check_every(X.device)} "
+                f"epoch(s)\n"
+                f"Columns     zero columns dropped from the next phase, taken "
+                f"back if their first-order condition fails\n"
             )
 
         self.train()
@@ -738,7 +960,7 @@ class SelectionMLP(Module):
                     f"  phase {phase}/{self.n_phases}"
                     f"  lambda {lam:.6e}  tol {tol:.1e}\n{_trace_header()}"
                 )
-            self.fit_phase(X, y, lam, tol, n_epochs)
+            self._fit_phase(X, y, lam, tol, n_epochs, final=phase == self.n_phases)
         return self
 
     @torch.no_grad()
