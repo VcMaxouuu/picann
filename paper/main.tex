@@ -1,0 +1,443 @@
+\documentclass[twoside,11pt]{article}
+\usepackage{float}
+\usepackage{jmlr2e}
+
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{booktabs}
+
+\newtheorem{assumption}{Assumption}
+
+% ---------------------------------------------------------------- macros
+\newcommand{\lamDB}{\lambda_\alpha^{\mathrm{DB}}}
+\newcommand{\bth}{\boldsymbol{\theta}}
+\newcommand{\bet}{\boldsymbol{\eta}}
+\newcommand{\ba}{\mathbf{a}}
+\newcommand{\br}{\mathbf{r}}
+\newcommand{\brhat}{\hat{\mathbf{r}}_0}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\by}{\mathbf{y}}
+\newcommand{\bone}{\mathbf{1}}
+\newcommand{\bzero}{\mathbf{0}}
+\newcommand{\Wone}{W^{(1)}}
+\newcommand{\PenWone}{\|W^{(1)}\|_1}
+\newcommand{\PenWonek}{\|W^{(1)}_{k, \cdot}\|_1}
+\newcommand{\maxnorm}[1]{\left\|#1\right\|_{\max}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\soft}{\mathcal{S}}
+\newcommand{\Lt}{\tilde{\mathcal{L}}}
+
+\title{Variable Selection using Artificial Neural Networks}
+
+\author{\name Maxime Van Cutsem \email Maxime.Vancutsem@unige.ch
+}
+
+\begin{document}
+
+\editor{XXX}
+
+\maketitle
+
+\begin{abstract}%
+Variable selection in neural networks remains challenging due to their
+nonlinear and highly parameterized structure, in particular because
+first-layer weights cannot be interpreted independently of the downstream
+network. Yet, selecting a relevant subset of input variables can improve
+interpretability while reducing model size. We introduce an adaptive
+first-layer regularization framework for multilayer perceptrons relying on a single regularization parameter. Each first-layer neuron is weighted by its downstream sensitivity, yielding a scale-invariant penalty and normalizing the corresponding first-layer gradients. To preserve variables whose relevance emerges only through nonlinear interactions, regularization is progressively introduced after an unpenalized learning phase. The resulting sparse networks discard irrelevant input variables and their associated parameters, thereby reducing both input dimensionality and model complexity. We develop the framework for Gaussian regression, binary classification, and Cox proportional-hazards models, and investigate its variable-selection and
+sparsification properties through numerical experiments.
+\end{abstract}
+
+\begin{keywords}
+  neural networks, variable selection, sparse neural networks, 
+adaptive regularization, pivotal loss; proximal optimization
+\end{keywords}
+
+% ==========================================================================
+\section{Introduction}\label{sec:intro}
+
+In machine learning, models ranging from linear methods to artificial neural networks (ANNs) have achieved remarkable success: the former owing largely to their simplicity and interpretability, and the latter to their flexibility and ability to learn complex relationships from data. Selecting which features a model should be allowed to use, however, is a statistical problem before it is a computational one. In the spirit of Occam’s razor—\textit{``Entities must not be multiplied beyond necessity’’}—among models with comparable predictive performance, preference should be given to those that achieve it with fewer parameters. Yet modern machine learning has increasingly favoured predictive performance and large-scale parametrization over parsimony. As computational power and storage have become more readily available, it has become feasible to train increasingly large models using many inputs and parameters, often without explicitly questioning whether all of them are necessary. In this regime, overparameterization is computationally affordable, but computational feasibility does not imply statistical necessity.  A neural network may therefore achieve strong predictive performance while relying on an unnecessarily large set of inputs and parameters, making it difficult to distinguish the variables that genuinely contribute to the model from those that are merely accommodated by its flexibility. As a result, the input-layer weight matrix $W_1$ may remain unnecessarily dense: irrelevant input variables retain connections to the hidden layer even though these connections are not needed for prediction. Identifying and removing such variables therefore not only improves interpretability but can also substantially reduce the number of parameters required by the network. 
+
+For linear models, this variable-selection problem is well posed and extensively studied. The lasso of \citet{tibshirani1996}, for instance, produces a family of supports indexed by a regularization parameter $\lambda$, and a substantial literature addresses how this parameter should be chosen. In neural networks, the same question arises in a fundamentally different setting: the parameterization is non-identifiable, the training objective is non-convex, and the fitted model is typically obtained through first-order iterative optimization rather than by solving the optimization problem to global optimality. Sparsity-inducing penalties on the input layer extend the principle of variable selection to this setting \citep{FengSimon2019,LassoNet}, but the crucial choice of $\lambda$ is still most commonly delegated to cross-validation.
+
+Cross-validation is unattractive for variable selection for two reasons. First, it is computationally expensive, as it multiplies the cost of an already demanding training procedure by the number of folds and candidate values of $\lambda$. More fundamentally, it targets predictive risk rather than variable-selection accuracy: the value of $\lambda$ that minimizes prediction error need not recover the underlying support and may retain variables carrying little or no signal. If the objective is variable selection, the regularization level should instead be calibrated directly against the event one seeks to control—the inclusion of variables carrying no predictive signal. A natural approach is therefore to calibrate $\lambda$ under the pure-noise model, in which no variable carries predictive signal, so that, for a prescribed $\alpha$, no variable is selected with probability at least $1-\alpha$. Such null-based calibration has been developed for Gaussian linear regression \citep{Dono94b,BCW11} and, more recently, extended to a broader class of loss functions through the pivotal information criterion of \citet{PIC-SMS2026}. The pivotal construction makes the null distribution of the calibrating statistic independent of unknown nuisance parameters, allowing $\lambda$ to be calibrated without estimating quantities such as the noise scale. In this work, we adopt this pivotal framework and the corresponding loss functions considered in \citet{PIC-SMS2026}.
+
+Transferring this calibration principle to neural networks introduces an additional difficulty. The gradient with respect to the input-layer weights depends on the downstream network weights, which, because neural-network parameterizations are non-identifiable, can be rescaled without changing the function represented by the network while simultaneously changing the magnitude of the input-layer gradients. Consequently, a regularization threshold based directly on these gradients is itself parameterization-dependent: the same fitted function may cross or remain below the threshold solely as a consequence of rescaling. A meaningful null calibration for neural networks must therefore account for the arbitrary scale induced by the network parameterization.
+
+This paper addresses this difficulty by exploiting the structure of the input-layer gradient under the null. We show that, when the input layer is empty, this gradient is exactly a rank-one matrix: the outer product of a network-sensitivity vector and a data-dependent vector. The data-dependent factor carries the evidence against the null and is calibrated once, before training, by Monte Carlo, whereas the sensitivity factor captures the current scale of the network and is recomputed at every iteration. This decomposition yields an adaptive regularization level that follows the scale of the network throughout training, making variable selection invariant to equivalent rescalings of its parameterization while preserving the original null calibration. Following the pivotal framework described above, we focus on three tasks: regression, binary classification, and Cox survival analysis.
+
+\paragraph{Contributions.}
+\begin{itemize}
+\item A zero-thresholding condition for a penalized multilayer perceptron
+      (Theorem~\ref{thm:ztffunc}) and an exact rank-one factorization of the
+      null gradient (Lemma~\ref{lem:rankone}) separating the statistical
+      evidence from the network amplification.
+\item A regularization rule, $\lambda^{(t)}=\lamDB\, s(\bth^{(t)})$, in which
+      only the first factor is calibrated. It is exactly invariant under the
+      rescaling group of the network (Proposition~\ref{prop:invariance}),
+      recovers the fixed-architecture condition at the null
+      (Theorem~\ref{thm:consistency}) uniformly over the unpenalized
+      parameters, and is the largest admissible such rule
+      (Proposition~\ref{prop:admissible}).
+\item The consequence that the calibrated threshold does not depend on the
+      architecture (Corollary~\ref{cor:arch}): one calibration serves every
+      depth and width, and collapses to the linear-model threshold.
+\item Pivotal losses and closed-form null gradients for Gaussian regression,
+      binary classification and the Cox model (Table~\ref{tab:losses}),
+      reducing the calibration to a single matrix product per Monte Carlo draw.
+\item An optimization scheme (Section~\ref{sec:optim}) combining a reversed
+      warm path in $\lambda$ with proximal updates at the adaptive level, and
+      an explicit account of what it does and does not guarantee.
+\end{itemize}
+
+% ==========================================================================
+\section{Related Work}\label{sec:related}
+
+\paragraph{Sparse-input networks.} Penalizing the input layer of a network to obtain feature selection is an established device. \citet{FengSimon2019} fit sparse-input networks with a group penalty on the input weights, \citet{Louizos2018} relax an $\ell_0$ count with stochastic gates, as do \citet{Yamada2020}, and \citet{LassoNet} tie the input layer to a residual linear path so that the selected support is nested along the path. In all of these the regularization level is a tuning parameter, chosen by cross-validation or by a target sparsity; the present paper leaves the architecture and the penalty alone and supplies the level.
+
+\paragraph{Selection with error control.}
+A second line of work attaches a frequentist guarantee directly to the selected set. Knockoffs \citep{BarberCandes2015control} and their model-X extension \citep{Candes2018panning} control the false discovery rate by comparing each original variable with an artificial counterpart designed to mimic the dependence structure of the covariates while carrying no additional
+information about the response. DeepPINK \citep{Lu2018deeppink} extends this principle to neural networks through a dedicated architecture that jointly processes original variables and their knockoffs. These approaches provide a stronger inferential guarantee than the one pursued here, but require the
+construction of valid knockoff variables, which in the model-X setting relies on knowledge or accurate estimation of the covariate distribution. Our approach instead operates directly on the original covariates and can be integrated into a standard MLP without generating artificial variables or
+modifying the architecture to accommodate them. The resulting guarantee is different in nature: our calibration controls the zero-thresholding behavior at the null model rather than the false discovery rate of the returned support.
+
+\paragraph{Tuning without cross-validation.} Choosing $\lambda$ from the null rather than from held-out risk goes back to the universal threshold of \citet{Dono94b} and, for the lasso, to the theoretical choice of \citet{BRT2009}. The quantile universal threshold \citep{QUT2017} replaces the asymptotic rate by a finite-sample quantile of the zero-thresholding statistic, and the pivotal information criterion \citep{PIC-SMS2026} makes that quantile computable by removing the nuisance parameters from the statistic. This paper is the extension of that programme to a nonlinear, non-identified model.
+
+\paragraph{Rescaling invariance.} That a positively homogeneous network can move mass between layers at no cost, so that a norm read off one layer means nothing on its own, is the phenomenon behind path-normalized measures of capacity
+\citep{neyshabur2015norm} and behind Path-SGD \citep{neyshabur2015path}. Those works build an invariant norm out of the products of weights along input-output
+paths. We take a different route, dictated by what the calibration needs: rather than replacing the penalty by an invariant one, we keep the $\ell_1$ penalty on $\Wone$ and rescale the \emph{level}, by exactly the factor that appears in the null gradient. The resulting cost is invariant and the threshold retains its meaning. 
+
+% ==========================================================================
+\section{Sparse Learning with Neural Networks}
+
+\subsection{Setting and Notation}\label{sec:setting}
+Let $\{(\bx_i,y_i)\}_{i=1}^n$ be independent observations, with
+$\bx_i\in\R^p$, and let $X\in\R^{n\times p}$ denote the design matrix. Throughout, without loss of generality, we normalize
+\begin{equation}\label{eq:x_norm}
+    \frac{1}{n}\sum_{i=1}^n x_{ij}^2=1\quad (j=1, \ldots, p).
+\end{equation}
+
+Consider a fully connected artificial neural network (ANN), also known as a multilayer perceptron (MLP), with $L$ layers, defining a class of functions
+\begin{equation*}
+    f_{\bth}(\bx) = S_L \circ S_{L-1} \circ \cdots \circ S_1(\bx).
+\end{equation*}
+Throughout this work, we restrict attention to MLPs with a scalar output, so that $f_{\bth}:\R^p\to\R$. The parameter vector $\bth$ collects all model parameters. For observation $i$, we write $\eta_i=f_{\bth}(\bx_i)$, and $\bet=f_{\bth}(X)\in\R^n$ for the vector of outputs over the $n$ observations. Write $p_0 = p$ for the input dimension and $p_l$ for the number of neurons in layer $l$, so that $W^{(l)} \in \R^{p_l \times p_{l-1}}$ and $\mathbf{b}^{(l)} \in \R^{p_l}$ denote the weight matrix and bias of layer $l$. For $l \in \{1, \ldots, L-1\}$, layer $l$ applies an affine map followed by a componentwise nonlinearity,
+\begin{equation*}
+    S_l(\mathbf{u}) = \sigma_l\!\left(\mathbf{b}^{(l)} + W^{(l)} \mathbf{u}\right),
+\end{equation*}
+mapping the $p_{l-1}$-vector $\mathbf{u}$ into a $p_l$-vector. The output layer is purely affine,
+\begin{equation*}
+    S_L(\mathbf{u}) = \mathbf{b}^{(L)} + W^{(L)} \mathbf{u}, \qquad p_L = 1,
+\end{equation*}
+with no activation applied: any transformation of the output, such as a sigmoid for binary classification, is absorbed into the loss so that regression ($y\in\R$), binary classification ($y\in\{0,1\}$) and survival data are handled by the same architecture.
+
+With an MLP, the relevant features are the columns of the first-layer weight matrix $\Wone$ that are non-zero, as these are the only ones directly connected to the input $X$. For this identification to be meaningful, a small entry of $\Wone$ must not be reproducible by inflating weights in deeper layers: otherwise an input could influence the output while its first-layer column is arbitrarily small, severing the link between $\Wone$ and feature relevance and nullifying any penalty applied to $\Wone$.
+
+The quantity that governs this amplification is the sensitivity of the output to the first layer. Write $\mathbf{h}^{(1)}_i = \mathbf{b}^{(1)} + \Wone\bx_i$ for the first-layer preactivation at observation $i$ and define the \emph{sensitivity vectors}
+\begin{equation}\label{eq:obs-sensitivity}
+    \ba_i(\bth)=\frac{\partial \eta_i}{\partial\mathbf{h}^{(1)}_i}=D_i^{(1)}W^{(2)\top}\cdots D_i^{(L-1)} W^{(L)\top}\in\R^{p_1},
+    \qquad i=1,\ldots,n .
+\end{equation}
+where $D_i^{(\ell)}=\operatorname{diag}\left(\sigma_\ell '\left(\mathbf{h}^{(\ell)}_i\right)\right)$. They measure how strongly the network output responds to each first-layer unit, and they are the exact factor by which a gradient signal is amplified between the penalized weights and the output. For each first-layer neuron $k$, its \emph{neuron sensitivity scale} is defined by
+\begin{equation}\label{eq:neuron-sensitivity-scale}
+    s_k(\bth)=\|\ba_{\cdot k}(\bth)\|_\infty=\max_{1\leq i\leq n}|a_{ik}(\bth)|.
+\end{equation}
+Section~\ref{sec:gauge} shows that measuring the penalty on this sensitivity scale removes the arbitrary neuron-wise scaling of the network.
+
+Throughout this work, we use the leaky ReLU activation
+\begin{equation*}
+    \sigma_\ell(t)=\max\{t,mt\},\qquad
+    \ell=1,\ldots,L-1,\qquad m\in(0,1),
+\end{equation*}
+in all hidden layers. This choice is motivated by two properties that are particularly useful for the proposed regularization.
+
+First, the derivative of each hidden-layer activation remains bounded away from zero wherever it is defined. More precisely,
+\begin{equation*}
+    |\sigma_\ell'(t)| \geq m > 0,
+\end{equation*}
+This prevents the activation functions themselves from completely blocking the propagation of information through the network and, in particular, the backpropagated signal used to construct the sensitivity vectors $\ba_i$. This property is also relevant to the structural interpretation of variable selection through $\Wone$. If an intermediate activation contains a flat region, an input--output path may be blocked by the activation even though the corresponding entries of $\Wone$ are nonzero. The network may then become functionally independent of some input variables without the associated first-layer weights being zero.
+
+Second, the leaky ReLU is positively homogeneous:
+\begin{equation*}
+    \sigma_\ell(ct)=c\,\sigma_\ell(t),\qquad c>0.
+\end{equation*}
+Although this property holds for every hidden layer, it is specifically required at the first one for the scale-invariance of the adaptive penalty developed in Section~\ref{sec:gauge}. 
+
+
+\subsection{The Scale Ambiguity and the Adaptive Regularization}\label{sec:gauge}
+
+A multilayer network does not uniquely identify its own parameters, and this ambiguity affects precisely the quantity that a penalty on $\Wone$ is meant to measure. By positive homogeneity of the first-layer activation, for any first-layer neuron $k$ and any $c>0$, the reparameterization
+\begin{equation}\label{eq:positive-rescaling}
+    W^{(1)}_{k,\cdot}\mapsto c W^{(1)}_{k,\cdot},\qquad
+    b^{(1)}_k\mapsto c b^{(1)}_k,\qquad
+    W^{(2)}_{\cdot,k}\mapsto\frac{1}{c}W^{(2)}_{\cdot,k}
+\end{equation}
+leaves the fitted function $f_{\bth}$, and therefore the loss, unchanged, while multiplying $\PenWonek$ by $c$. Read in the direction $c\to0$, this is the failure mode announced in Section~\ref{sec:setting}: the network drives its input weights towards zero, compensates by inflating $W^{(2)}$, predicts exactly what it predicted before, and pays a penalty as small as it likes.
+
+The sensitivity scale \eqref{eq:neuron-sensitivity-scale} transforms in the opposite direction. Indeed, under \eqref{eq:positive-rescaling},
+\begin{equation*}
+    \ba_{\cdot k}(\bth)\mapsto \frac{1}{c}\ba_{\cdot k}(\bth),\qquad
+    s_k(\bth)\mapsto\frac{1}{c}s_k(\bth).
+\end{equation*}
+The sensitivity scale therefore provides exactly the compensating factor needed to remove this arbitrary parameter scaling.
+
+\begin{proposition}
+\label{prop:penalty-scale-invariance}
+The adaptive first-layer penalty
+\begin{equation}\label{eq:adaptive-pen}
+    \mathcal P(\bth)=\sum_{k=1}^{p_1}s_k(\bth)\PenWonek
+\end{equation}
+is invariant under any positive neuron-wise reparameterization of the form \eqref{eq:positive-rescaling}. Consequently, any penalized criterion does not depend on the arbitrary scale chosen between a first-layer neuron and the following layer.
+\end{proposition}
+
+The role of the sensitivity scale extends beyond scale invariance. By matching the sensitivity factor appearing in the first-layer gradient, it removes neuron-specific downstream amplification from the regularization threshold, thereby enabling the calibration of a single regularization parameter $\lambda$, as developed in Section~\ref{sec:lambda-calibration}.
+
+\subsection{The Learning Problem}\label{sec:learning}
+Given data $(X,\by)$, we consider the training problem
+\begin{equation}\label{eq:optiprob}
+    \min_{\bth \in \R^\gamma} J_\lambda(\bth),
+    \qquad
+    J_\lambda(\bth)=\mathcal{L}_n\left(f_{\bth}(X);\by\right)+
+    \lamDB\sum_{k=1}^{p_1}s_k(\bth)\PenWonek,
+\end{equation}
+where $\mathcal{L}_n(\bet;\by)$ is a data-dependent goodness-of-fit measure of the vector of outputs, and $\lamDB\geq0$ is the regularization parameter controlling the strength of the adaptive first-layer penalty developed in Section \ref{sec:lambda-calibration}. The full expression $J_\lambda$ is referred to as the cost function. Throughout this work, we consider three statistical learning settings: regression, binary classification, and survival analysis under the Cox proportional hazards model. In each case, the goodness-of-fit term $\mathcal{L}_n$ is chosen with a specific normalization that will play a central role in the calibration of $\lambda$. We consider the same three losses as \citet{PIC-SMS2026}.
+
+For regression, with $\by\in\R^n$, we use the square-root loss
+\begin{equation*}
+    \mathcal{L}_n^{\mathrm{reg}}(\bet;\by)=
+    \frac{1}{\sqrt n}\|\by-\bet\|_2.
+\end{equation*}
+
+For binary classification, with $y_i\in\{0,1\}$ and $\mu_i=1/(1+e^{-\eta_i})$ denoting the logit produced by the network, we use the transformed logistic loss
+\begin{equation*}
+    \mathcal{L}_n^{\mathrm{log}}(\bet;\by)
+    =\frac{2}{n}\sum_{i=1}^n\left[y_i\sqrt{\frac{1-\mu_i}{\mu_i}}+(1-y_i)\sqrt{\frac{\mu_i}{1-\mu_i}}\right].
+\end{equation*}
+
+For survival analysis, let $(y_i,\delta_i)$ denote the observed time and
+event indicator for subject $i$. We use the square-root negative Cox partial log-likelihood
+\begin{equation*}
+    \mathcal{L}_n^{\mathrm{Cox}}(\bet;\mathbf T,\boldsymbol\delta)
+    =\sqrt{\sum_{i=1}^n\delta_i
+    \left[
+        \eta_i- \log\left(\sum_{j: y_j\geq y_i}e^{\eta_j}\right)
+    \right]}.
+\end{equation*}
+
+These particular forms and normalizations are not merely conventional
+choices. They are selected so that the score of the loss at the null model is a pivotal quantity, free of any nuisance parameters. This property is what ultimately allows our choice of regularization level $\lamDB$ developed in Section~\ref{sec:lambda-calibration}.
+
+The numerical solution of~\eqref{eq:optiprob} is considered separately in Section~\ref{sec:optimization}. In particular, we discuss why the final regularization level should be approached along a regularization path rather than imposed directly at initialization, and describe the optimization scheme used to solve the successive penalized problems.
+
+\section{Choice of $\lambda$}\label{sec:lambda-calibration}
+\subsection{Calibration under the null}
+The regularization parameter $\lambda$ in~\eqref{eq:optiprob} governs the sparsity of the learned model: if $\lambda$ is too large, the penalty dominates the loss and drives $\Wone=\bf 0$, thereby discarding all input features; if $\lambda$ is too small, irrelevant features may enter the model. A standard approach is to select $\lambda$ by cross-validation. This is unattractive in the present setting for two reasons. First, repeated fitting is computationally expensive for neural networks. Second, cross-validation targets predictive performance rather than support recovery and may therefore favour insufficient regularization when the objective is variable selection.
+
+We instead build on the null-calibration principle of \citet{PIC-SMS2026}. The central idea is to calibrate a reference regularization level under the pure-noise model $H_0:\Wone=\mathbf{0}$ so that, with prescribed probability $1-\alpha$, the penalized criterion~\eqref{eq:optiprob} admits $\Wone=\mathbf{0}$ as a local minimum.
+
+In a multilayer model, the gradient with respect to $\Wone$ depends not only on the statistical association between $X$ and $\mathbf{y}$, but also on how strongly the downstream network propagates perturbations of the first layer to the output. These two contributions play fundamentally different roles. The former is determined by the data and can be calibrated under $H_0$, whereas the latter depends on the parametrization of the downstream network and may evolve during training. However, the adaptive first-layer penalty~\eqref{eq:adaptive-pen} is constructed using precisely the same sensitivity factor that enters the first-layer gradient. At the null model, this factor therefore cancels from the local optimality condition, removing the neuron-specific effect of the downstream parametrization. The resulting zero-threshold condition depends only on the data-dependent score and can thus be calibrated through a single regularization parameter $\lambda$.
+
+The following theorem turns the requirement that $\Wone=\mathbf{0}$ be a
+local minimizer into a condition on $\lambda$. Consider the null parameter $\bth^0=(\Wone=\mathbf{0},\hat{\boldsymbol{\tau}})$, where $\hat{\boldsymbol{\tau}}$ minimizes the loss subject to $\Wone=\mathbf{0}$. Under this constraint, the network output is constant across observations, so that $\hat{\boldsymbol{\tau}}$ yields the optimal constant fit under $\mathcal L_n$. For each first-layer neuron $k=1, \ldots, p_1$, let
+\begin{equation}\label{eq:null-gradient}
+    \mathbf{g}_{0, k}=\left.\nabla_{W^{(1)}_{k,\cdot}}
+    \mathcal L_n\left(f_{\bth}(X);\by\right)
+    \right|_{\bth=\bth^0}\in\R^{p}
+\end{equation}
+denote the corresponding first-layer gradient at the null model, and 
+\begin{equation}\label{eq:null-residual}
+    \hat{\mathbf r}_0(\by)=\left. \nabla_{\boldsymbol{\eta}}
+    \mathcal L_n(\boldsymbol{\eta};\by)
+    \right|_{\boldsymbol{\eta}=f_{\bth^0}(X)}
+    \in\R^n
+\end{equation}
+the gradient of the loss with respect to the network output, evaluated at the optimal constant fit.
+
+\begin{theorem}[Zero-thresholding function]\label{thm:ztffunc}
+Assume that $s_k(\bth^0)>0$ for all $k=1,\ldots,p_1$. The null parameter $\bth^0=(\Wone=\mathbf{0},\hat{\boldsymbol{\tau}})$ is a local minimizer of the cost function~\eqref{eq:optiprob} if and only if
+\begin{equation*}
+    \lambda\geq \max_{k=1, \dots, p_1}\frac{\|\mathbf{g}_{0,k}\|_\infty}{s_k(\bth^0)}=\left\|X^T\hat{\mathbf r}_0(\by)\right\|_\infty=:\lambda_0(X, \by).
+\end{equation*}
+\end{theorem}
+\begin{proof}
+At $\Wone=\mathbf{0}$, the first-layer preactivation is identical across
+observations, $\mathbf h_i^{(1)}=\mathbf b^{(1)}$ for all $i=1, \ldots, n$. Since the downstream network therefore receives the same input for every observation, the first-layer sensitivity of neuron $k$ is constant across the sample. Hence, for some scalar $a_{0k}$,
+\begin{equation*}
+    \ba_{\cdot k}(\bth^0)=a_{0k}\mathbf 1_n,\qquad s_k(\bth^0)=|a_{0k}|.
+\end{equation*}
+Let $\hat{\mathbf r}_0(\by)=\left.\nabla_{\boldsymbol{\eta}}\mathcal L_n(\boldsymbol{\eta};\by)\right|_{\bth=\bth^0}$ denote the loss gradient at the optimal constant fit. By the chain rule, the gradient with respect to the $k$th row of the first-layer weights is
+\begin{equation*}
+    \mathbf g_{0,k}=X^\top
+    \left(
+        \ba_{\cdot k}(\bth^0)
+        \odot
+        \hat{\mathbf r}_0(\by)
+    \right)
+    =a_{0k}X^\top\hat{\mathbf r}_0(\by).
+\end{equation*}
+Therefore,
+\begin{equation*}
+    \frac{\|\mathbf g_{0,k}\|_\infty}{s_k(\bth^0)}
+    =
+    \frac{|a_{0k}|
+          \|X^\top\hat{\mathbf r}_0(\by)\|_\infty}
+         {|a_{0k}|}
+    =
+    \|X^\top\hat{\mathbf r}_0(\by)\|_\infty.
+\end{equation*}
+This quantity is identical for every first-layer neuron. Finally, the subgradient condition associated with the adaptive penalty
+at $W^{(1)}_{k,\cdot}=\mathbf 0$ is $\|\mathbf g_{0,k}\|_\infty\leq\lambda s_k(\bth^0)$ for $k=1,\ldots,p_1$. Since $s_k(\bth^0)>0$, these conditions hold simultaneously if and only if $\lambda\geq \max_{1\leq k\leq p_1}\frac{\|\mathbf g_{0,k}\|_\infty}{s_k(\bth^0)}$ yielding the provided statement.
+\end{proof}
+
+The zero-thresholding function $\lambda_0(X,\by)$ gives the critical
+regularization level at which $\Wone=\mathbf 0$ becomes locally optimal
+for the observed data $(X,\by)$. To turn this data-dependent threshold into a calibrated regularization parameter, we evaluate its distribution in the setting where the null solution is appropriate, namely under $H_0$. This null distribution provides the reference against which the regularization level is calibrated.
+
+\begin{definition}[Detection boundary]\label{def:db}
+Let $\mathbf{Y}_0$ be a response vector generated under the pure-noise model. Define the random variable $\Lambda=\lambda_0(X, \mathbf{Y}_0),$
+and let $F_{\Lambda}$ denote its cumulative distribution function. Then, for a prescribed $\alpha\in(0,1)$, the \emph{$\alpha$-level detection boundary} is
+\begin{equation}\label{eq:detection-boundary}
+\lambda_\alpha^{\mathrm{DB}}=F_{\Lambda}^{-1}(1-\alpha).
+\end{equation}
+\end{definition}
+
+The resulting $\lambda_\alpha^{\mathrm{DB}}$ provides a fixed reference threshold calibrated under the null model. By construction, $\mathbb P_{H_0}\left\{\lambda_0(X,\mathbf Y_0)\leq\lambda_\alpha^{\mathrm{DB}}\,\middle|\,X\right\}=1-\alpha$. Combined with Theorem~\ref{thm:ztffunc}, this implies that $\lambda_\alpha^{\mathrm{DB}}$ is the regularization level at which the null parameter satisfies the zero-threshold condition with probability $1-\alpha$ under $H_0$. This threshold is determined prior to network optimization and remains unchanged throughout training. Importantly, the downstream network parametrization does not enter its calibration: its contribution to the first-layer gradient has already been removed by the sensitivity scaling in Theorem~\ref{thm:ztffunc}. The calibration of $\lambda$ therefore depends only on the distribution of the zero-thresholding function under $H_0$. 
+
+In general, such a null distribution may depend on unknown nuisance
+parameters, preventing the detection boundary from being calibrated without their estimation. The losses introduced in Section~\ref{sec:learning} are chosen precisely to avoid this difficulty. For each of the three learning tasks considered here, the corresponding zero-thresholding statistic
+$\Lambda=\lambda_0(X,\mathbf Y_0)$ is pivotal under $H_0$, meaning that its null distribution is free of unknown nuisance parameters of $\mathbf Y_0$. Consequently, the detection boundary can be approximated by Monte Carlo simulation under any convenient choice of these nuisance parameters: repeated null samples $\mathbf Y_0^{(1)},\ldots,\mathbf Y_0^{(M)}$ are generated, the
+corresponding zero-thresholding statistics are computed, and
+$\lambda_\alpha^{\mathrm{DB}}$ is estimated by their empirical
+$(1-\alpha)$-quantile.
+
+Table~\ref{tab:pivotal-ztf} summarizes the resulting zero-thresholding statistic for regression, binary classification, and survival analysis. Further details on the pivotal construction are provided in \citet{PIC-SMS2026}, with the survival analysis setting developed specifically in \citet{COX-MS2026}.
+
+\begin{table}[t]
+    \centering
+    \begin{tabular}{c|c}
+        \textbf{Learning task} & \textbf{Zero-thresholding statistic $\lambda_0(X,\by)$} \\
+        \hline
+        Regression & $\frac{\|X^\top(\by -\bar{\by}\bone)\|_\infty/\sqrt{n}}{\|\by -\bar{\by}\bone\|_2}$ \\
+        Binary classification & $\frac{\|X^\top(\by -\bar{\by}\bone)\|_\infty/n}{\sqrt{\bar{\by}(1-\bar{\by})}}$ \\
+        Survival analysis & $\frac{
+        \left\|
+        n^{-1}\sum_{i=1}^n
+        \delta_i(\bx_i-\bar{\bx}_{\mathcal R_i})
+        \right\|_\infty
+        }{
+        2\left\{
+        n^{-1}\sum_{i=1}^n
+        \delta_i\log|\mathcal R_i|
+        \right\}^{1/2}
+        }$
+    \end{tabular}
+    \caption{Pivotal zero-thresholding statistics for the three learning tasks considered in this work. For the survival analysis task, $\mathcal R_i=\{j:y_j\geq y_i\}$ and $\bar{\bx}_{\mathcal R_i}=|\mathcal R_i|^{-1}\sum_{j\in\mathcal R_i}\bx_j$}.
+    \label{tab:pivotal-ztf}
+\end{table}
+
+\subsection{Interpretation away from the null model}
+\label{sec:lambda-away-null}
+
+The calibration above is derived at the null model $\Wone=\mathbf 0$, where the sensitivity of each first-layer neuron is constant across observations and cancels exactly from the zero-threshold
+condition. We now consider the role of the same regularization parameter away from the null model.
+
+For a general parameter $\bth$ with $\Wone\neq\mathbf 0$, define the
+normalized sensitivity vector
+\begin{equation*}
+    \tilde{\ba}_{\cdot k}(\bth)=
+    \frac{\ba_{\cdot k}(\bth)}{s_k(\bth)},
+    \qquad
+    \|\tilde{\ba}_{\cdot k}(\bth)\|_\infty=1,
+\end{equation*}
+for every neuron such that $s_k(\bth)>0$. This decomposition separates two distinct components of the downstream sensitivity: $s_k(\bth)$ captures its overall magnitude, whereas $\widetilde{\ba}_{\cdot k}(\bth)$ preserves its variation across observations. In particular, the former measures how strongly neuron $k$ can affect the network output, while the latter describes how this influence is distributed across the sample.
+
+Let $\mathbf r(\bth)=\nabla_{\boldsymbol{\eta}}\mathcal L_n(\boldsymbol{\eta};\by)
+\big|_{\boldsymbol{\eta}=f_{\bth}(X)}$ denote the loss gradient with respect to the network output. By the chain
+rule, the gradient associated with the $k$th first-layer neuron satisfies
+\begin{equation*}
+    \mathbf g_k(\bth)
+    =
+    X^\top\left(
+        \ba_{\cdot k}(\bth)\odot\mathbf r(\bth)
+    \right)
+    =
+    s_k(\bth)
+    X^\top\left(
+        \tilde{\ba}_{\cdot k}(\bth)
+        \odot\mathbf r(\bth)
+    \right).
+\end{equation*}
+Consequently, for each first-layer connection $(k,j)$, the corresponding threshold condition can be written as
+\begin{equation*}
+    |g_{kj}(\bth)|
+    \leq
+    \lambda s_k(\bth)
+    \quad\Longleftrightarrow\quad
+    \left|
+        X_j^\top
+        \left(
+            \tilde{\ba}_{\cdot k}(\bth)
+            \odot\mathbf r(\bth)
+        \right)
+    \right|
+    \leq
+    \lambda.
+\end{equation*}
+Hence, the adaptive penalty removes the overall magnitude $s_k(\bth)$ of the downstream sensitivity from the thresholding condition, while retaining its observation-specific structure through
+$\widetilde{\ba}_{\cdot k}(\bth)$. The regularization parameter $\lambda$ therefore acts on a normalized first-layer score and can be shared across all first-layer neurons.
+
+
+\section{Optimization}\label{sct:opti}
+
+\subsection{A Reversed Warm Path}
+While the ultimate goal is to solve \eqref{eq:optiprob}, the calibrated level $\lamDB$ should not in general be imposed directly at initialization. The reason is that $\lamDB$ is calibrated from the first-order behavior of the network at the null model. A relevant variable may nevertheless have little or no marginal association with the response when its effect is purely nonlinear.
+Consequently, its relevance may not be visible from the first-order score at the null model. Starting the optimization directly at $\lamDB$ may then drive the first-layer weights to zero before the network has learned the nonlinear representation through which that variable becomes informative.
+
+We therefore take the conservative approach of solving for a sequence of $\lambda$'s in the spirit of simulated annealing. Namely, we propose solving \eqref{eq:optiprob} using an increasing grid
+\begin{equation*}
+    0<\lambda^{(1)}<\lambda^{(2)}<\ldots<\lambda^{(M)}=\lamDB.
+\end{equation*}
+Taking as initial parameter values the solution corresponding to the previous $\lambda^{(i)}$ leads to a sequence of sparser approximating solutions until solving for $\lamDB$ at the last step. Along this path, the normalized sensitivities
+$\widetilde{\ba}_{\cdot k}(\bth)$ evolve with the learned representation. Hence, once nonlinear structure has been learned, the adaptive first-layer score $X_j^\top \left(\tilde{\ba}_{\cdot k}(\bth)\odot \mathbf r(\bth)\right)$ can reflect information that is absent from the marginal score at the null model. Increasing $\lambda$ then progressively removes first-layer connections that are no longer supported by these learned, observation-specific scores.
+
+\subsection{Proximal Updates at an Adaptive Level}
+Within a phase $m=1, \ldots, M$, the regularization level $\lambda^{(m)}$ is fixed, whereas the sensitivity scales $s_k(\bth^t)=\|\ba_{\cdot k}(\bth^t)\|_\infty$ are recomputed at every optimization iteration. These quantities are treated as fixed during the corresponding parameter update. This results in a sequence of locally weighted $\ell_1$ problems, with penalty $\lambda^{(m)}s_k(\bth^t)$ applied to each coefficient in the $k$th row of $\Wone$.
+
+A standard proximal-gradient update would take the form
+\begin{equation*}
+    W^{(1,t+1)}_{k,\cdot}= \operatorname{Soft}_{\delta_t\lambda^{(m)}s_k(\bth^t)}
+    \left( W^{(1,t)}_{k,\cdot} - \delta_t\mathbf g_k(\bth^t)\right),
+\end{equation*}
+where $\delta_t$ is the step size and $\mathbf g_k(\bth^t)$ denotes the gradient of the loss with respect to the $k$th row of the first-layer weights.
+
+
+
+In practice, we replace the common step size $\delta_t$ by the diagonal adaptive preconditioning of Adam \citep{Adam}, within the proximal framework of \citet{AdaProx}. This yields a coordinate-wise proximal update. Let
+\begin{equation*}
+    v_{kj}^{(t)}= \beta v_{kj}^{(t-1)}+(1-\beta) \left(g_{kj}^{(t)}\right)^2,\qquad \beta\in[0, 1)
+\end{equation*}
+denote the exponential moving average of the squared gradient, and define the corresponding effective step size $D_{kj}^{(t)}=\frac{\delta_t}{\sqrt{v_{kj}^{(t)}}+\varepsilon}$.
+The first-layer update is then
+\begin{equation*}
+    W^{(1,t+1)}_{kj}= \operatorname{Soft}_{D_{kj}^{(t)}\lambda^{(m)}s_k(\bth^t)}
+    \left(W^{(1,t)}_{kj}-D_{kj}^{(t)}g_{kj}(\bth^t)\right).
+\end{equation*}
+
+Note that the adaptive preconditioning does not alter the thresholding condition. Indeed, if $W^{(1,t)}_{kj}=0$, the update step leaves this coefficient at zero if and only if 
+\begin{equation*}
+    D_{kj}^{(t)}|g_{kj}(\bth^t)|\leq D_{kj}^{(t)}\lambda^{(m)}s_k(\bth^t).
+\end{equation*}
+Since $D_{kj}^{(t)}>0$, this is equivalent to $|g_{kj}(\bth^t)|\leq\lambda^{(m)}s_k(\bth^t)$. Hence, the coordinate-wise adaptive step sizes affect the magnitude of the optimization updates but cancel from the zero-thresholding test. Moreover, because no first-moment momentum is used for the penalized first-layer weights, the quantity entering this condition is the current loss gradient. The proximal Adam update therefore preserves the zero-threshold condition underlying Theorem~\ref{thm:ztffunc}.
+
+The remaining network parameters are unpenalized and are therefore updated without the proximal step. For these parameters, we retain both the first- and second-moment estimates, so that their update reduces to standard Adam \citep{Adam}. The optimization thus uses two parameter groups: the penalized first-layer weights are updated by proximal Adam without first-moment momentum, whereas all remaining parameters are updated by standard Adam with momentum.
+
+\subsection{Optional Refitting on the Selected Model}
+After completion of the regularization path, the selected support is
+determined from the nonzero columns of $\hat W^{(1)}$. If desired, the network can subsequently be reduced to this selected set of input features, together with the removal of any hidden neurons that have become inactive. The dimensions of $\hat W^{(2)}$ are adjusted accordingly. An optional final training phase can then be performed on this reduced architecture without regularization so as to reduce any estimation bias introduced by the penalized fit.
+
+\section{Experiments}\label{sct:exp}
+
+\newpage
+\bibliography{biblio}
+\end{document}
