@@ -180,14 +180,23 @@ class SelectionMLP(Module):
     def selected(self) -> Tensor:
         r"""Report the variables the network still uses.
 
-        After :meth:`fit`, every unit satisfies :math:`s_k = 1`, so that a
-        column of :math:`W^{(1)}` vanishes exactly when the variable no longer
-        reaches the output.
+        Variable :math:`j` is selected when a coefficient of the matrix
+        :math:`B_{k \cdot} = s_k W^{(1)}_{k \cdot}` is not zero in its column.
+        :math:`B` is the same all along an orbit of the rescalings, and
+        :math:`B = W^{(1)}` on the representative :meth:`fit` hands back, where
+        :math:`s_k = 1`. A unit with :math:`s_k = 0` reaches neither the output
+        nor the objective: a variable entering through such units only is not
+        selected, whatever its weights.
 
-        :return: mask of the variables whose column of :math:`W^{(1)}` is not
-            zero, of shape ``(p,)``.
+        The mask is read off the weights, without the data: a unit counts when
+        a path of non-zero weights links it to the output. Every slope of the
+        LeakyReLU is positive, so this is :math:`s_k > 0`, exactly with one
+        hidden layer and up to exact cancellations between paths otherwise.
+
+        :return: mask of the selected variables, of shape ``(p,)``.
         """
-        return (self.selector.weight != 0.0).any(dim=0)
+        live = self._reaching_output()[0]
+        return ((self.selector.weight != 0.0) & live.unsqueeze(-1)).any(dim=0)
 
     @property
     def selected_indices(self) -> list[int]:
@@ -202,14 +211,14 @@ class SelectionMLP(Module):
         r"""Count, layer by layer, the weights the fitted function still uses.
 
         A non-zero weight counts only if the unit it leaves still depends on the
-        inputs. A unit whose incoming weights are all discarded outputs a
-        constant, which its outgoing weights only add to the bias of the next
-        layer; the loss of a unit cascades through the layers, so a network
-        whose :math:`W^{(1)}` is zero has no effective weight at all.
-
-        Only :math:`W^{(1)}` is penalised, so the deeper layers hold no exact
-        zero and every unit that depends on the inputs reaches the output: no
-        weight is discarded for failing to reach it. Biases are not counted.
+        inputs and the unit it enters still reaches the output. A unit whose
+        incoming weights are all discarded outputs a constant, which its
+        outgoing weights only add to the bias of the next layer; the loss of a
+        unit cascades through the layers, so a network whose :math:`W^{(1)}` is
+        zero has no effective weight at all. Only :math:`W^{(1)}` is penalised,
+        so the deeper layers seldom hold an exact zero, but a unit whose
+        outgoing weights all vanish, :math:`s_k = 0`, uses none of its incoming
+        ones. Biases are not counted.
 
         :return: pair ``(effective, total)`` for every linear layer of
             :attr:`layers`, from the first to the last, and the fraction of all
@@ -218,11 +227,10 @@ class SelectionMLP(Module):
         counts = []
         w1 = self.selector.weight
         reached = torch.ones(w1.shape[1], dtype=torch.bool, device=w1.device)
-        for module in self.layers:
-            if isinstance(module, Linear):
-                mask = (module.weight != 0.0) & reached
-                counts.append((int(mask.sum()), mask.numel()))
-                reached = mask.any(dim=1)
+        for layer, reaching in zip(self._linears, self._reaching_output()):
+            mask = (layer.weight != 0.0) & reached & reaching.unsqueeze(-1)
+            counts.append((int(mask.sum()), mask.numel()))
+            reached = mask.any(dim=1)
 
         effective, total = map(sum, zip(*counts))
         return counts, effective / total
@@ -259,6 +267,20 @@ class SelectionMLP(Module):
     def _slopes(self) -> list[float]:
         """Return the negative slope of every hidden activation, in order."""
         return [m.negative_slope for m in self.layers if isinstance(m, LeakyReLU)]
+
+    @torch.no_grad()
+    def _reaching_output(self) -> list[Tensor]:
+        r"""Mark, layer by layer, the units a path of non-zero weights links to
+        the output.
+
+        :return: one mask per linear layer, over the units it outputs, from the
+            first layer to the last, whose single unit is the output itself.
+        """
+        linears = self._linears
+        reaching = [torch.ones(1, dtype=torch.bool, device=linears[-1].weight.device)]
+        for layer in reversed(linears[1:]):
+            reaching.append(((layer.weight != 0.0) & reaching[-1].unsqueeze(-1)).any(dim=0))
+        return reaching[::-1]
 
     def _forward_with_preactivations(self, X: Tensor) -> tuple[Tensor, list[Tensor]]:
         r"""Compute the linear predictor and keep the pre-activations of the
@@ -468,6 +490,25 @@ class SelectionMLP(Module):
     # Fit
     # ------------------------------------------------------------------
 
+    def _optimizer(self, lam: float) -> ProxGenAdam:
+        r"""Build the optimiser of a phase at the level :math:`\lambda^{(m)}`.
+
+        :math:`W^{(1)}` has a group of its own, penalised at ``lam`` and without
+        first moment, :math:`\beta_1 = 0`: its proximal step then tests the
+        gradient at the current iterate against the threshold, and nothing
+        carries it across zero once it is cut. Every other parameter takes a
+        plain Adam step, with no penalty and no weight decay.
+
+        :param lam: level :math:`\lambda^{(m)}` of the phase.
+        :return: optimiser whose first group holds :math:`W^{(1)}` alone.
+        """
+        w1 = self.selector.weight
+        others = [parameter for parameter in self.parameters() if parameter is not w1]
+        return ProxGenAdam(
+            [{"params": [w1], "lam": lam, "betas": (0.0, 0.999)}, {"params": others}],
+            self.lr,
+        )
+
     @torch.no_grad()
     def calibrate(
         self,
@@ -541,11 +582,7 @@ class SelectionMLP(Module):
             ``(epochs taken,)``.
         """
         w1 = self.selector.weight
-        others = [parameter for parameter in self.parameters() if parameter is not w1]
-        optimizer = ProxGenAdam(
-            [{"params": [w1], "lam": lam, "betas": (0.0, 0.999)}, {"params": others}],
-            self.lr,
-        )
+        optimizer = self._optimizer(lam)
         scheduler = ReduceLROnPlateau(
             optimizer,
             factor=0.5,
@@ -591,6 +628,11 @@ class SelectionMLP(Module):
             penalized["penalty_weights"] = s.unsqueeze(-1)
             optimizer.step()
 
+        if hidden:
+            # The budget ran out right after a step: hand back the representative
+            # on the constraint all the same.
+            optimizer.zero_grad()
+            self._retract(self.sensitivity(X), optimizer)
         warnings.warn(
             f"phase at lambda = {lam:.3e} stopped after {n_epochs} epochs without "
             f"converging: relative change of the objective {change:.2e} over "
