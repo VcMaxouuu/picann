@@ -267,47 +267,20 @@ Since the rescalings~\eqref{eq:positive-rescaling} change neither the fit nor th
 \end{equation}
 Problems~\eqref{eq:optiprob} and~\eqref{eq:constrained} are equivalent: they have the same optimal value, $\Nrm(\hat\bth)$ solves~\eqref{eq:constrained} whenever $\hat\bth$ solves~\eqref{eq:optiprob}, and every solution of~\eqref{eq:constrained} solves~\eqref{eq:optiprob}. Moreover, by Proposition~\ref{prop:normalization} the selected set $\hat S=\{j:\hat W^{(1)}_{\cdot j}\neq\bzero\}$ is the same for both. From now on, we work with~\eqref{eq:constrained}.
 
-Let $\varphi$ denote all the parameters other than $\Wone$ (every bias and $W^{(2)},\ldots,W^{(L)}$), and let $\br=\nabla_{\bet}\mathcal L_n(\bet;\by)$ at $\bet=f_{\bth}(X)$ be the gradient of the loss with respect to the outputs. The following result gives the conditions that the calibration of Section~\ref{sec:lambda-calibration} and the algorithm of Section~\ref{sec:optimization} rely on. It holds where the activation patterns are locally constant, that is, where no hidden pre-activation vanishes at any observation.
-
-\begin{proposition}[Optimality conditions of~\eqref{eq:constrained}]\label{prop:kkt}
-Let $\bth\in\Thetaone$ be a point where the activation patterns are locally constant. Then:
-\begin{enumerate}
-\item[(i)] the gradient of $\ell$ with respect to the $k$th row of $\Wone$ is
-\begin{equation}\label{eq:first-layer-gradient}
-    \mathbf g_k=\nabla_{W^{(1)}_{k,\cdot}}\ell=X^\top\big(\ba_{\cdot k}\odot\br\big),
-    \qquad \|\ba_{\cdot k}\|_\infty=1,\qquad k=1,\ldots,p_1 ;
-\end{equation}
-\item[(ii)] if $\bth$ is a local minimizer of~\eqref{eq:constrained}, there are Lagrange multipliers $\nu_1,\ldots,\nu_{p_1}$ such that
-\begin{equation}\label{eq:kkt}
-    \bzero\in\mathbf g_k+\lambda\,\partial\PenWonek\quad(k=1,\ldots,p_1),
-    \qquad
-    \nabla_\varphi\ell+\sum_{k=1}^{p_1}\nu_k\nabla_\varphi s_k=\bzero .
-\end{equation}
-\end{enumerate}
-The first condition in~\eqref{eq:kkt} is that of a lasso: $g_{kj}=-\lambda\operatorname{sign}W^{(1)}_{kj}$ where $W^{(1)}_{kj}\neq0$, and
-\begin{equation}\label{eq:zero-test}
-    |g_{kj}|\leq\lambda \quad\text{where } W^{(1)}_{kj}=0 .
-\end{equation}
-\end{proposition}
-\begin{proof}
-(i) Since $\eta_i$ depends on $\Wone$ only through $\mathbf h^{(1)}_i=\mathbf b^{(1)}+\Wone\bx_i$, the chain rule gives $\partial\ell/\partial W^{(1)}_{kj}=\sum_ir_i\,a_{ik}\,x_{ij}$, and $\|\ba_{\cdot k}\|_\infty=s_k=1$ on $\Thetaone$. (ii) With the patterns frozen, $s_k$ depends neither on $\Wone$ nor on the biases, and depends on $W^{(2)}$ only through its column $W^{(2)}_{\cdot,k}$, in which it is positively homogeneous of degree one, so that $\langle W^{(2)}_{\cdot,k},\nabla_{W^{(2)}_{\cdot,k}}s_k\rangle=s_k=1$. The constraint gradients $\nabla_\varphi s_k$ are therefore linearly independent, and~\eqref{eq:kkt} is the Lagrange multiplier rule for the minimization of the smooth function $\ell$ plus the convex penalty $\lambda\PenWone$ under smooth equality constraints that do not involve $\Wone$.
-\end{proof}
-
 \section{Choice of $\lambda$}\label{sec:lambda-calibration}
 \subsection{Calibration under the null}
 The regularization parameter $\lambda$ in~\eqref{eq:constrained} governs the sparsity of the learned model: if $\lambda$ is too large, the penalty dominates the loss and drives $\Wone=\bf 0$, thereby discarding all input features; if $\lambda$ is too small, irrelevant features may enter the model. A standard approach is to select $\lambda$ by cross-validation. This is unattractive in the present setting for two reasons. First, repeated fitting is computationally expensive for neural networks. Second, cross-validation targets predictive performance rather than support recovery and may therefore favour insufficient regularization when the objective is variable selection.
 
-We instead build on the null-calibration principle of \citet{PIC-SMS2026}. The central idea is to calibrate a reference regularization level under the pure-noise model $H_0:\Wone=\mathbf{0}$ so that, with prescribed probability $1-\alpha$, $\Wone=\mathbf{0}$ satisfies the optimality conditions of~\eqref{eq:constrained}.
+We instead build on the null-calibration principle of \citet{PIC-SMS2026}. The central idea is to calibrate the regularization level under the pure-noise model $H_0:\Wone=\mathbf{0}$ so that, with prescribed probability $1-\alpha$, the solution without any selected variable, $\Wone=\mathbf{0}$, is a local minimizer of~\eqref{eq:constrained}. The first step is to find, for given data, the levels $\lambda$ that make it one.
 
-In a multilayer model, the gradient~\eqref{eq:first-layer-gradient} with respect to $\Wone$ depends not only on the statistical association between $X$ and $\mathbf{y}$, through $\br$, but also on how strongly the downstream network propagates perturbations of the first layer to the output, through $\ba_{\cdot k}$. The former is determined by the data and can be calibrated under $H_0$; the latter depends on the parametrization of the downstream network. On $\Thetaone$, the overall magnitude of $\ba_{\cdot k}$ is fixed, $\|\ba_{\cdot k}\|_\infty=s_k=1$, and at the null model it disappears altogether from the zero-thresholding condition~\eqref{eq:zero-test}, which can thus be calibrated through a single regularization parameter $\lambda$.
-
-The following theorem turns the requirement that $\Wone=\mathbf{0}$ satisfy~\eqref{eq:zero-test} into a condition on $\lambda$. Consider the null parameter $\bth^0=(\Wone=\mathbf{0},\hat{\boldsymbol{\tau}})$, where $\hat{\boldsymbol{\tau}}$ minimizes the loss subject to $\Wone=\mathbf{0}$, taken in $\Thetaone$. Under this constraint, the network output is constant across observations, so that $\hat{\boldsymbol{\tau}}$ yields the optimal constant fit under $\mathcal L_n$. For each first-layer neuron $k=1, \ldots, p_1$, let
-\begin{equation}\label{eq:null-gradient}
-    \mathbf{g}_{0, k}=\left.\nabla_{W^{(1)}_{k,\cdot}}
-    \mathcal L_n\left(f_{\bth}(X);\by\right)
-    \right|_{\bth=\bth^0}\in\R^{p}
+For a network $\bth$, let $\br=\nabla_{\bet}\mathcal L_n(\bet;\by)$ at $\bet=f_{\bth}(X)$ denote the gradient of the loss with respect to the outputs. Since $\eta_i$ depends on $\Wone$ only through $\mathbf h^{(1)}_i=\mathbf b^{(1)}+\Wone\bx_i$, the chain rule gives the gradient with respect to the $k$th row of $\Wone$,
+\begin{equation}\label{eq:first-layer-gradient}
+    \mathbf g_k=\nabla_{W^{(1)}_{k,\cdot}}\mathcal L_n\left(f_{\bth}(X);\by\right)=X^\top\big(\ba_{\cdot k}\odot\br\big),
+    \qquad k=1,\ldots,p_1 .
 \end{equation}
-denote the corresponding first-layer gradient at the null model, and 
+It mixes two contributions: the statistical association between $X$ and $\by$, through $\br$, and how strongly the downstream network propagates perturbations of the first layer to the output, through $\ba_{\cdot k}$. The former is determined by the data and can be calibrated under $H_0$; the latter depends on the parametrization of the downstream network. On $\Thetaone$, the overall magnitude of the latter is fixed, $\|\ba_{\cdot k}\|_\infty=s_k=1$, and we now show that at the null model it disappears altogether.
+
+Consider the null parameter $\bth^0=(\Wone=\mathbf{0},\hat{\boldsymbol{\tau}})\in\Thetaone$, where $\hat{\boldsymbol{\tau}}$ minimizes the loss subject to $\Wone=\mathbf{0}$. Under this constraint, the network output is constant across observations, so that $\hat{\boldsymbol{\tau}}$ yields the optimal constant fit under $\mathcal L_n$. Let $\mathbf g_{0,k}$ denote the gradient~\eqref{eq:first-layer-gradient} at $\bth^0$, and
 \begin{equation}\label{eq:null-residual}
     \hat{\mathbf r}_0(\by)=\left. \nabla_{\boldsymbol{\eta}}
     \mathcal L_n(\boldsymbol{\eta};\by)
@@ -317,26 +290,26 @@ denote the corresponding first-layer gradient at the null model, and
 the gradient of the loss with respect to the network output, evaluated at the optimal constant fit.
 
 \begin{theorem}[Zero-thresholding function]\label{thm:ztffunc}
-Let $\bth^0\in\Thetaone$. Then $\Wone=\bzero$ satisfies the zero-thresholding condition~\eqref{eq:zero-test} of~\eqref{eq:constrained} at $\bth^0$ if and only if
+Assume that no hidden pre-activation vanishes at $\bth^0$ and that $\mathcal L_n(\cdot\,;\by)$ is twice continuously differentiable near $f_{\bth^0}(X)$. Let
 \begin{equation*}
-    \lambda\geq \max_{k=1, \dots, p_1}\|\mathbf{g}_{0,k}\|_\infty=\left\|X^\top\hat{\mathbf r}_0(\by)\right\|_\infty=:\lambda_0(X, \by).
+    \lambda_0(X, \by)=\left\|X^\top\hat{\mathbf r}_0(\by)\right\|_\infty .
 \end{equation*}
+\begin{enumerate}
+\item[(i)] If $\lambda>\lambda_0(X,\by)$, then $\bth^0$ is a local minimizer of~\eqref{eq:constrained}: the level $\lambda$ forces $\Wone=\bzero$.
+\item[(ii)] If $\lambda<\lambda_0(X,\by)$, then $\bth^0$ is not a local minimizer of~\eqref{eq:constrained}.
+\end{enumerate}
 \end{theorem}
-\begin{proof}
-At $\Wone=\mathbf{0}$, the first-layer preactivation is identical across
-observations, $\mathbf h_i^{(1)}=\mathbf b^{(1)}$ for all $i=1, \ldots, n$. Since the downstream network therefore receives the same input for every observation, the first-layer sensitivity of neuron $k$ is constant across the sample: $\ba_{\cdot k}(\bth^0)=a_{0k}\mathbf 1_n$, with $|a_{0k}|=s_k(\bth^0)=1$ since $\bth^0\in\Thetaone$. By~\eqref{eq:first-layer-gradient},
-\begin{equation*}
-    \mathbf g_{0,k}=X^\top\big(a_{0k}\mathbf 1_n\odot\hat{\mathbf r}_0(\by)\big)=a_{0k}X^\top\hat{\mathbf r}_0(\by),
-    \qquad
-    \|\mathbf g_{0,k}\|_\infty=\|X^\top\hat{\mathbf r}_0(\by)\|_\infty ,
-\end{equation*}
-the same for every neuron. Condition~\eqref{eq:zero-test} at $\Wone=\bzero$ is $\|\mathbf g_{0,k}\|_\infty\leq\lambda$ for every $k$, hence the statement.
-\end{proof}
 
-The null gradient is thus the rank-one matrix $(\mathbf g_{0,1},\ldots,\mathbf g_{0,p_1})^\top=\mathbf a_0\big(X^\top\hat{\mathbf r}_0(\by)\big)^\top$: the network enters only through the signs $a_{0k}=\pm1$, and the evidence against the null only through $X^\top\hat{\mathbf r}_0(\by)$.
+The key step of the proof, given in Appendix~\ref{app:proofs}, is that the network disappears from the null gradient. At $\Wone=\mathbf{0}$, every observation reaches the deeper layers with the same input $\mathbf b^{(1)}$, so that $\ba_{\cdot k}(\bth^0)=a_{0k}\bone$, with $|a_{0k}|=s_k(\bth^0)=1$ on $\Thetaone$. By~\eqref{eq:first-layer-gradient}, the null gradient is the rank-one matrix
+\begin{equation}\label{eq:null-gradient}
+    \mathbf g_{0,k}=a_{0k}\,X^\top\hat{\mathbf r}_0(\by),
+    \qquad
+    \|\mathbf g_{0,k}\|_\infty=\lambda_0(X,\by),\qquad k=1,\ldots,p_1 :
+\end{equation}
+the network enters only through the signs $a_{0k}=\pm1$, and the evidence against the null only through $X^\top\hat{\mathbf r}_0(\by)$. Moving $W^{(1)}_{kj}$ away from zero changes the loss at rate $|g_{0,kj}|\leq\lambda_0$ and the penalty at rate $\lambda$, hence the threshold. At $\lambda=\lambda_0$, the first-order terms balance and the theorem does not conclude; this case has probability zero under the continuous null distributions considered below.
 
 The zero-thresholding function $\lambda_0(X,\by)$ gives the critical
-regularization level at which $\Wone=\mathbf 0$ satisfies the zero-thresholding condition
+regularization level above which $\Wone=\mathbf 0$ is forced
 for the observed data $(X,\by)$. To turn this data-dependent threshold into a calibrated regularization parameter, we evaluate its distribution in the setting where the null solution is appropriate, namely under $H_0$. This null distribution provides the reference against which the regularization level is calibrated.
 
 \begin{definition}[Detection boundary]\label{def:db}
@@ -347,7 +320,7 @@ and let $F_{\Lambda}$ denote its cumulative distribution function. Then, for a p
 \end{equation}
 \end{definition}
 
-The resulting $\lambda_\alpha^{\mathrm{DB}}$ provides a fixed reference threshold calibrated under the null model. By construction, $\mathbb P_{H_0}\left\{\lambda_0(X,\mathbf Y_0)\leq\lambda_\alpha^{\mathrm{DB}}\,\middle|\,X\right\}=1-\alpha$. Combined with Theorem~\ref{thm:ztffunc}, this implies that $\lambda_\alpha^{\mathrm{DB}}$ is the regularization level at which the null parameter satisfies the zero-threshold condition with probability $1-\alpha$ under $H_0$. This threshold is determined prior to network optimization and remains unchanged throughout training. Importantly, the downstream network parametrization does not enter its calibration: on $\Thetaone$, its contribution to the null gradient reduces to a sign (Theorem~\ref{thm:ztffunc}). The calibration of $\lambda$ therefore depends only on the distribution of the zero-thresholding function under $H_0$. 
+The resulting $\lambda_\alpha^{\mathrm{DB}}$ provides a fixed reference threshold calibrated under the null model. By construction, $\mathbb P_{H_0}\left\{\lambda_0(X,\mathbf Y_0)\leq\lambda_\alpha^{\mathrm{DB}}\,\middle|\,X\right\}=1-\alpha$. Combined with Theorem~\ref{thm:ztffunc}, this implies that, under $H_0$, the null parameter is a local minimizer of~\eqref{eq:constrained} at $\lambda=\lamDB$ with probability $1-\alpha$, the event $\lambda_0=\lamDB$ having probability zero. This threshold is determined prior to network optimization and remains unchanged throughout training. Importantly, the downstream network parametrization does not enter its calibration: on $\Thetaone$, its contribution to the null gradient reduces to a sign (Theorem~\ref{thm:ztffunc}). The calibration of $\lambda$ therefore depends only on the distribution of the zero-thresholding function under $H_0$. 
 
 In general, such a null distribution may depend on unknown nuisance
 parameters, preventing the detection boundary from being calibrated without their estimation. The losses introduced in Section~\ref{sec:learning} are chosen precisely to avoid this difficulty. For each of the three learning tasks considered here, the corresponding zero-thresholding statistic
@@ -384,7 +357,7 @@ Table~\ref{tab:pivotal-ztf} summarizes the resulting zero-thresholding statistic
 \subsection{Interpretation away from the null model}
 \label{sec:lambda-away-null}
 
-The calibration above is derived at the null model $\Wone=\mathbf 0$, where the sensitivity of each first-layer neuron is constant across observations. Away from the null model, $\ba_{\cdot k}$ varies across observations, but on $\Thetaone$ its largest entry is still one in absolute value. The zero-thresholding condition~\eqref{eq:zero-test} reads
+The calibration above is derived at the null model $\Wone=\mathbf 0$, where the sensitivity of each first-layer neuron is constant across observations. Away from the null model, a zero weight $W^{(1)}_{kj}$ is compatible with local optimality only if moving it away from zero does not decrease the objective, that is, if $|g_{kj}|\leq\lambda$. The vector $\ba_{\cdot k}$ now varies across observations, but on $\Thetaone$ its largest entry is still one in absolute value, and the condition reads
 \begin{equation*}
     \left|X_j^\top\big(\ba_{\cdot k}(\bth)\odot\br(\bth)\big)\right|\leq\lambda,
     \qquad \|\ba_{\cdot k}(\bth)\|_\infty=1 .
@@ -404,6 +377,25 @@ We therefore take the conservative approach of solving for a sequence of $\lambd
 \end{equation*}
 Taking as initial parameter values the solution corresponding to the previous $\lambda^{(i)}$ leads to a sequence of sparser approximating solutions until solving for $\lamDB$ at the last step. Along this path, the sensitivity profiles
 $\ba_{\cdot k}(\bth)$ evolve with the learned representation. Hence, once nonlinear structure has been learned, the adaptive first-layer score $X_j^\top \left(\ba_{\cdot k}(\bth)\odot \mathbf r(\bth)\right)$ can reflect information that is absent from the marginal score at the null model. Increasing $\lambda$ then progressively removes first-layer connections that are no longer supported by these learned, observation-specific scores.
+
+\subsection{Optimality Conditions}\label{sec:kkt}
+The algorithm is built on the first-order conditions of~\eqref{eq:constrained}. Write $\ell(\bth)=\mathcal L_n(f_{\bth}(X);\by)$, and let $\varphi$ denote all the parameters other than $\Wone$: every bias and $W^{(2)},\ldots,W^{(L)}$.
+
+\begin{proposition}[Optimality conditions of~\eqref{eq:constrained}]\label{prop:kkt}
+Let $\bth\in\Thetaone$ be a local minimizer of~\eqref{eq:constrained} where no hidden pre-activation vanishes. Then there are Lagrange multipliers $\nu_1,\ldots,\nu_{p_1}$ such that
+\begin{equation}\label{eq:kkt}
+    \bzero\in\mathbf g_k+\lambda\,\partial\PenWonek\quad(k=1,\ldots,p_1),
+    \qquad
+    \nabla_\varphi\ell+\sum_{k=1}^{p_1}\nu_k\nabla_\varphi s_k=\bzero .
+\end{equation}
+The first condition is that of a lasso: $g_{kj}=-\lambda\operatorname{sign}W^{(1)}_{kj}$ where $W^{(1)}_{kj}\neq0$, and
+\begin{equation}\label{eq:zero-test}
+    |g_{kj}|\leq\lambda \quad\text{where } W^{(1)}_{kj}=0 .
+\end{equation}
+\end{proposition}
+\begin{proof}
+Near $\bth$ the activation patterns are constant, so that $s_k$ depends neither on $\Wone$ nor on the biases, and depends on $W^{(2)}$ only through its column $W^{(2)}_{\cdot,k}$, in which it is positively homogeneous of degree one: $\langle W^{(2)}_{\cdot,k},\nabla_{W^{(2)}_{\cdot,k}}s_k\rangle=s_k=1$. The constraint gradients $\nabla_\varphi s_k$ are therefore linearly independent, and~\eqref{eq:kkt} is the Lagrange multiplier rule for the minimization of the smooth function $\ell$ plus the convex penalty $\lambda\PenWone$ under smooth equality constraints that do not involve $\Wone$.
+\end{proof}
 
 \subsection{One Iteration}\label{sec:iteration}
 Let $\soft_\tau(x)=\operatorname{sign}(x)\max(|x|-\tau,0)$ denote soft-thresholding. Within a phase at level $\lambda=\lambda^{(m)}$, each iteration takes an unconstrained step on the objective $\ell+\lambda\PenWone$ of~\eqref{eq:constrained}, in the first layer and in $\varphi$, then brings the network back onto the constraint.
@@ -483,6 +475,21 @@ Since $\ell$ is unchanged by~\eqref{eq:positive-rescaling}, differentiating in $
 \end{equation*}
 Take the inner product of the stationarity condition with the vector equal to $b^{(1)}_k$ in the coordinate of $b^{(1)}_k$, to $-W^{(2)}_{\cdot,k}$ in those of $W^{(2)}_{\cdot,k}$, and zero elsewhere. By the identity above, the $\ell$ part gives $-\langle W^{(1)}_{k,\cdot},\mathbf g_k\rangle$. Since $s_j$ does not depend on the biases, and depends on $W^{(2)}$ linearly through its column $W^{(2)}_{\cdot,j}$ only, the multiplier part gives $-\nu_ks_k=-\nu_k$. Hence $\langle W^{(1)}_{k,\cdot},\mathbf g_k\rangle=-\nu_k$. The first condition of~\eqref{eq:kkt} gives $g_{kj}=-\lambda\operatorname{sign}W^{(1)}_{kj}$ wherever $W^{(1)}_{kj}\neq0$, so that $\langle W^{(1)}_{k,\cdot},\mathbf g_k\rangle=-\lambda\PenWonek$, and $\nu_k=\lambda\PenWonek$.
 \end{proof}
+
+\paragraph{Proof of Theorem~\ref{thm:ztffunc}.}
+Write $F(\bth)=\ell(\bth)+\lambda\PenWone$ and $\bth=(\Wone,\varphi)$, with $\bth^0=(\bzero,\hat{\boldsymbol\tau})$. Since no hidden pre-activation vanishes at $\bth^0$, the activation patterns are constant on a neighbourhood $U$ of $\bth^0$. On $U$, $f_{\bth}(X)$ is a polynomial in $\bth$, $\ell$ is twice continuously differentiable, and $s_k$ does not depend on $\Wone$.
+
+(ii) Let $\lambda<\lambda_0$ and pick $(k,j)$ with $|g_{0,kj}|=\lambda_0$, by~\eqref{eq:null-gradient}. Let $\bth(t)$ equal $\bth^0$ except for $W^{(1)}_{kj}=-t\operatorname{sign}g_{0,kj}$, $t>0$. For small $t$, $\bth(t)\in U$, so that $s(\bth(t))=s(\bth^0)=\bone$ and $\bth(t)\in\Thetaone$. Then $F(\bth(t))-F(\bth^0)=-t\lambda_0+\lambda t+O(t^2)<0$ for small $t$: $\bth^0$ is not a local minimizer.
+
+(i) Let $\lambda>\lambda_0$ and $\bth=(\Wone,\varphi)\in\Thetaone\cap U$. The point $(\bzero,\varphi)$ lies in $U$ as well if $U$ is taken convex in $\Wone$. A Taylor expansion in $\Wone$ gives, with a constant $C$ uniform on a compact neighbourhood of $\bth^0$,
+\begin{equation*}
+    \ell(\Wone,\varphi)\geq\ell(\bzero,\varphi)+\sum_k\langle\mathbf g_k(\bzero,\varphi),W^{(1)}_{k,\cdot}\rangle-C\PenWone^2 .
+\end{equation*}
+At $(\bzero,\varphi)$, every observation has the same first-layer pre-activation, so that $\mathbf g_k(\bzero,\varphi)=a_k(\varphi)\,X^\top\br(\varphi)$, where $\br(\varphi)$ is the gradient of $\mathcal L_n$ at the constant output of $(\bzero,\varphi)$, and $|a_k(\varphi)|=s_k(\bzero,\varphi)=s_k(\bth)=1$, since $s_k$ does not depend on $\Wone$ on $U$. As $\varphi\to\hat{\boldsymbol\tau}$, $\|X^\top\br(\varphi)\|_\infty\to\lambda_0$; for $\epsilon=(\lambda-\lambda_0)/2$ and $\bth$ close enough to $\bth^0$, $\langle\mathbf g_k(\bzero,\varphi),W^{(1)}_{k,\cdot}\rangle\geq-(\lambda_0+\epsilon)\PenWonek$. Finally, $\ell(\bzero,\varphi)\geq\ell(\bth^0)$, since the output of $(\bzero,\varphi)$ is constant and $\hat{\boldsymbol\tau}$ gives the optimal constant fit. Altogether,
+\begin{equation*}
+    F(\bth)-F(\bth^0)\geq(\lambda-\lambda_0-\epsilon)\PenWone-C\PenWone^2\geq0
+\end{equation*}
+as soon as $\PenWone\leq\epsilon/C$: $\bth^0$ is a local minimizer of~\eqref{eq:constrained}.
 
 \paragraph{Proof of Proposition~\ref{prop:properties}.}
 (a) On $\Thetaone$, $\Nrm$ is the identity (Proposition~\ref{prop:normalization}(ii)). For scalars and $D>0$, $x=\soft_{D\lambda}(x-Dg)$ holds if and only if $g=-\lambda\operatorname{sign}x$ when $x\neq0$ and $|g|\leq\lambda$ when $x=0$, which gives the first condition of~\eqref{eq:kkt}. On $\varphi$, the first moment becomes $m'=\beta_1m+(1-\beta_1)\mathbf d_\varphi$ and the step is proportional to $m'$; with $m=\bzero$, nothing moves if and only if $\mathbf d_\varphi=\bzero$, the second condition of~\eqref{eq:kkt} with $\nu_k=\mu_k$. By Lemma~\ref{lem:multipliers}, these are all the first-order points.
