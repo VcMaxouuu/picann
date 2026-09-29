@@ -56,8 +56,11 @@ from deeppic.utils.path import geometric_path
 __all__ = ["SelectionMLP"]
 
 
-# On an accelerator, convergence is checked every _CHECK_EVERY epochs only:
-# every check reads values back to the host, which synchronises the device.
+# Convergence is checked every _CHECK_EVERY epochs only. On an accelerator,
+# every check reads values back to the host, which synchronises the device. On
+# the CPU, where reading back is free, checking every epoch was measured to
+# stop phases early: the rule compares two single values of an objective that
+# oscillates, and the more often it is tried, the sooner a coincidence meets it.
 _CHECK_EVERY = 10
 # A phase stops once the objective has moved, relatively, by at most the
 # tolerance over the last _WINDOW epochs.
@@ -75,7 +78,11 @@ _MAX_KKT_ROUNDS = 5
 
 
 def _check_every(device: torch.device) -> int:
-    """Return the number of epochs between two convergence checks on ``device``."""
+    """Return the number of epochs between two convergence checks on ``device``.
+
+    :param device: device the phase runs on.
+    :return: :data:`_CHECK_EVERY`, on every device.
+    """
     return _CHECK_EVERY
 
 _TRACE_COLUMNS = (
@@ -331,9 +338,7 @@ class SelectionMLP(Module):
         h1 = functional.linear(X, first.weight if weight is None else weight, first.bias)
         return self._layers_above(h1)
 
-    def _masks(
-        self, preactivations: list[Tensor], rows: Tensor | None = None
-    ) -> list[Tensor]:
+    def _masks(self, preactivations: list[Tensor]) -> list[Tensor]:
         r"""Read the derivatives :math:`D^{(l)} = \sigma_l'(h^{(l)})` of the
         activations, detached.
 
@@ -341,14 +346,11 @@ class SelectionMLP(Module):
         the backward pass of :class:`~torch.nn.LeakyReLU`.
 
         :param preactivations: pre-activations of the hidden layers.
-        :param rows: observations to keep; ``None`` keeps them all.
-        :return: one mask per hidden layer, of shape ``(n, p_l)`` or
-            ``(len(rows), p_l)``.
+        :return: one mask per hidden layer, of shape ``(n, p_l)``.
         """
         masks = []
         for h, slope in zip(preactivations, self._slopes):
-            h = h.detach() if rows is None else h.detach()[rows]
-            masks.append((h > 0.0).to(h.dtype).mul_(1.0 - slope).add_(slope))
+            masks.append((h.detach() > 0.0).to(h.dtype).mul_(1.0 - slope).add_(slope))
         return masks
 
     def _jacobian(self, masks: list[Tensor]) -> Tensor:

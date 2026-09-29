@@ -18,23 +18,25 @@ Fichier de suivi. En cas de reprise : relire ce fichier et `git log`, puis repre
 2. [x] Tests `tests/` qui verrouillent les propriétés (§3.2), sur le code actuel.
        130 tests rapides verts ; échecs initiaux = exactement E1 et E2, corrigés
        (commit 8709c45). Test lent H0 : `--runslow`.
-3. [ ] Harnais : `benchmarks/bench.py` (époques, temps, mémoire) et les harnais de
-       sélection `benchmarks/balance_sel.py`, `benchmarks/nonlin_sel.py` (absents du
-       dépôt et de l'historique git : à recréer). Mesure de référence *avant*
-       optimisation.
-4. [ ] Optimisations (§3.3), une par une, mesurées, sélections inchangées :
-       syncs hôte, `ProxGenAdam` (β1 = 0 sans `exp_avg`, corrections de biais en
-       scalaires, `_foreach`), `_CHECK_EVERY` selon le device, options.
-5. [ ] Ensemble actif + vérification KKT (§3.4).
-6. [ ] Cas limites (§3.5) : neurone à s_k = 0 dans `selected`, modèle linéaire.
-7. [ ] Article : réécriture §gauge / §lambda-away-null / §optimization, annexe de
-       preuves, références cassées, bibliographie, compilation sans référence
-       indéfinie (hors TODO(Max)).
-8. [ ] Rapport final.
+3. [x] Harnais recréés : `benchmarks/bench.py` + `compare.py` (époques, temps, mémoire,
+       sélections ; 4 threads) et `balance_sel.py` / `nonlin_sel.py` (+ `--scenario`,
+       1 thread par graine, 4 processus). Référence *avant* : worktree du commit 8709c45.
+4. [x] Optimisations (§3.3) : syncs supprimées (a par `_jacobian` sur toutes les
+       lignes, lot fixe de p₁ lignes virtuelles, une seule passe backward),
+       `ProxGenAdam` (pas d'`exp_avg` si β1 = 0, corrections de biais en scalaires,
+       `_foreach`). Options mesurées et rejetées : `_CHECK_EVERY = 1` sur CPU (E3),
+       moments de φ conservés entre phases (E2), `torch.compile`.
+5. [x] Ensemble actif + test KKT (§3.4) : pré-test au niveau de chaque phase, test
+       final à λ_DB avec relance (commit dfbb1c0).
+6. [x] Cas limites (§3.5) : neurone à s_k = 0 (E1), modèle linéaire (tests).
+7. [x] Article réécrit, compilé (seules références indéfinies : les 3 TODO(Max)).
+8. [ ] Rapport final (en cours) : attendre test H0 lent et benchmark final.
 
 ## Tâche en cours
 
-Étape 3 (harnais de mesure, référence avant optimisation).
+Étape 8 : test H0 lent sur le nouveau code (`tests/test_null_rate.py --runslow`),
+benchmark final (`benchmarks/results/after.json`), cas « FP persistant » avec tol/10,
+puis rapport.
 
 ## Décisions
 
@@ -58,6 +60,37 @@ Fichier de suivi. En cas de reprise : relire ce fichier et `git log`, puis repre
 - Exemple jouet : avec le schéma actuel u → 1,00004 ; sans le terme μ∇s (ancien
   schéma), u ≈ 1,57 après 20000 époques avec Adam, et u → 1,7548 (racine de
   (u−2)(1+u²) = −1) en descente de gradient simple : l'affirmation du §1.3 est vérifiée.
+
+## Mesures (étapes 3–5)
+
+Chaos numérique : en float64, l'écart de trajectoire entre l'ancien et le nouveau code
+(même init, phase 1) passe 1e-14 à l'époque 28, 1e-10 à 81, 1e-6 à 138, 1e-3 à 169
+(≈ ×1,19 par époque). Toute modification de l'arrondi change donc les trajectoires ;
+l'ancien code lui-même est déterministe à p ≤ 1000 mais pas à p = 5000 (4 vs 1
+threads). La comparaison des sélections est donc statistique (harnais, 1 thread).
+
+Harnais (graines 0..N−1) — ancien (8709c45) → nouveau (E1 = HEAD) :
+
+| scénario | exact | FP moyen | phases non conv. | époques | temps (s) |
+|---|---|---|---|---|---|
+| linear_p100 (50) | 48 → 50 | 0,06 → 0 | 1 → 0 | 1297 → 1229 | 2,39 → 1,97 |
+| nonlinear_p100 (50) | 46 → 46 | 0,04 → 0,06 | 0 → 1 | 1222 → 1229 | 2,67 → 2,53 |
+| linear_p1000 (30) | 22 → 25 | 3,93 → 1,57 | 9 → 5 | 2341 → 2065 | 6,16 → 4,48 |
+| linear_p5000 (20) | 10 → 14 | 41,2 → 18,8 | 14 → 7 | 2502 → 2660 | 13,2 → 10,3 |
+
+Sélections identiques graine par graine : 48/50, 46/50, 19/30, 7/20 (écarts dans les
+deux sens). Variantes rejetées :
+- post-test KKT à *chaque* phase (première version) : phase 4 relancée 2 à 4 fois à
+  p = 5000 (3865 époques, 15,8 s) ;
+- E2 (moments de φ gardés entre phases) : p1000 26/30 mais p5000 13/20 avec un cas à
+  249 FP, non linéaire 43/50 ;
+- E3 (`_CHECK_EVERY = 1` sur CPU) : −47 % d'époques mais p1000 20/30 (FP 11,9), p5000
+  9/20 (FP 120) : la règle d'arrêt compare deux valeurs d'un objectif qui oscille ;
+- `torch.compile` : 45 s de compilation pour −8 % sur forward+backward, recompilation
+  à chaque ensemble actif.
+
+Test H0 lent (100 jeux, n=100, p=20, (16, 8), α = 0,05), ancien code :
+P̂(Ŝ = ∅) = 0,96 (gaussien), 0,89 (binaire) ; cible 0,95 ± 0,022.
 
 ## Audit (étape 1) — code d'origine (commit 49f7e67) contre le §1
 
