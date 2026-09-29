@@ -20,7 +20,7 @@ from _helpers import (
 LAM = 0.7
 
 
-def _multiplier_from_backward(model, X, y, lam):
+def _multiplier_from_gradients(model, X, y, lam):
     with_term = backward_gradients(model, X, y, lam)
     without = backward_gradients(model, X, y, 0.0)
     return {name: with_term[name] - without[name] for name in with_term}
@@ -33,8 +33,8 @@ def test_multiplier_gradient_matches_autograd(kind, hidden, degenerate):
     model, X, y = make_problem(kind, hidden)
     if degenerate and kind == "gaussian":
         with torch.no_grad():
-            eta, preactivations = model._forward_with_preactivations(X)
-            a = model._jacobian(model._masks(preactivations))
+            eta, masks = model._forward(X)
+            a = model._jacobian(masks)
             rows = a.abs().argmax(dim=0)
             y = y.clone()
             y[rows] = eta[rows]
@@ -42,7 +42,7 @@ def test_multiplier_gradient_matches_autograd(kind, hidden, degenerate):
         with torch.no_grad():
             model._linears[-1].bias.add_(60.0)
 
-    got = _multiplier_from_backward(model, X, y, LAM)
+    got = _multiplier_from_gradients(model, X, y, LAM)
     expected = multiplier_gradients(model, X, LAM)
     first = model.selector
     for name, parameter in model.named_parameters():
@@ -52,21 +52,18 @@ def test_multiplier_gradient_matches_autograd(kind, hidden, degenerate):
 
 
 @pytest.mark.parametrize("hidden", DEPTHS)
-def test_linearised_output_is_the_multiplier_term(hidden):
+def test_multiplier_output_is_the_multiplier_term(hidden):
     r"""Fed :math:`u^{(k)} = \mu_k \operatorname{sign}(a_{i^*_k k}) e_k` at the
     observation :math:`i^*_k`, the linearised network outputs :math:`\sum_k
     \mu_k s_k`, and its gradient is the multiplier term."""
     model, X, _ = make_problem("gaussian", hidden)
     with torch.no_grad():
-        _, preactivations = model._forward_with_preactivations(X)
-        masks = model._masks(preactivations)
+        _, masks = model._forward(X)
         a = model._jacobian(masks)
-        s, rows = a.abs().max(dim=0)
-        units = torch.arange(a.shape[1])
+        s = a.abs().amax(dim=0)
         mu = LAM * model.selector.weight.abs().sum(dim=1)
-        U = torch.diag(mu * a[rows, units].sign())
     model.zero_grad()
-    output = model._linearised_output([m[rows] for m in masks], U)
+    output = model._multiplier(masks, a, LAM)
     assert_close(output, torch.dot(mu, s), rtol=1e-13, atol=0.0)
     output.backward()
     expected = multiplier_gradients(model, X, LAM)
@@ -88,7 +85,7 @@ def test_multiplier_gradient_matches_finite_differences(hidden):
         pytest.fail("no generic configuration found")
 
     mu = LAM * model.selector.weight.detach().abs().sum(dim=1)
-    got = _multiplier_from_backward(model, X, y, LAM)
+    got = _multiplier_from_gradients(model, X, y, LAM)
     generator = torch.Generator().manual_seed(0)
     step = 1e-6
     for index, layer in enumerate(model._linears[1:], start=1):

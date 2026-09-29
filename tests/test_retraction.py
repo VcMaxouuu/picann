@@ -43,10 +43,10 @@ def test_retraction_is_exact(kind, hidden):
     value = objective(model, X, y, LAM)
     optimizer = model._optimizer(LAM)
     optimizer.zero_grad()
-    _, s = model._backward(X, y, LAM)
+    _, s = model._gradients(X, y, LAM)
     assert (s - 1.0).abs().max() > 1e-2
 
-    on_section = model._retract(s, optimizer)
+    on_section = model._normalize(s, optimizer)
     with torch.no_grad():
         assert_close(model(X), eta, rtol=1e-12, atol=1e-14)
     assert_close(objective(model, X, y, LAM), value, rtol=1e-12, atol=0.0)
@@ -65,8 +65,8 @@ def test_transported_gradients_match_recomputed(kind, hidden):
         model, X, y = _off_section(kind, hidden)
         optimizer = model._optimizer(LAM)
         optimizer.zero_grad()
-        _, s = model._backward(X, y, lam)
-        model._retract(s, optimizer)
+        _, s = model._gradients(X, y, lam)
+        model._normalize(s, optimizer)
         transported[lam] = _gradients(model)
         recomputed[lam] = backward_gradients(model, X, y, lam)
 
@@ -94,14 +94,14 @@ def test_moments_are_transported(kind, hidden):
     rescale(model, torch.empty(hidden[0], dtype=X.dtype).uniform_(0.2, 5.0, generator=generator))
 
     optimizer.zero_grad()
-    _, s = model._backward(X, y, LAM)
+    _, s = model._gradients(X, y, LAM)
     assert (s - 1.0).abs().max() > 1e-2
     before = {
         parameter: {key: value.clone() for key, value in optimizer.state[parameter].items()
                     if key in ("exp_avg", "exp_avg_sq")}
         for parameter in model.parameters()
     }
-    model._retract(s, optimizer)
+    model._normalize(s, optimizer)
 
     first, second = model._linears[:2]
     factors = {first.weight: s.unsqueeze(-1), first.bias: s, second.weight: s.reciprocal()}
@@ -155,3 +155,22 @@ def test_iterates_with_moments_depend_only_on_the_orbit(kind, hidden):
         full_step(other, X, y, LAM, other_optimizer)
     for mine, theirs in zip(model.parameters(), other.parameters()):
         assert_close(mine, theirs, rtol=1e-9, atol=1e-12)
+
+
+@pytest.mark.parametrize("kind", LOSSES)
+@pytest.mark.parametrize("hidden", DEPTHS)
+def test_recorded_objective_is_the_cost_and_ignores_rescaling(kind, hidden):
+    r"""The objective a phase records is :math:`J_\lambda` at the iterate, and a
+    rescaled copy of the network records the same values: the normalization
+    moves the weights, never the objective."""
+    model, X, y = make_problem(kind, hidden)
+    other, _, _ = _off_section(kind, hidden)
+    expected = objective(model, X, y, LAM)
+    assert_close(objective(other, X, y, LAM), expected, rtol=1e-12, atol=0.0)
+
+    with pytest.warns(RuntimeWarning):
+        history = model.fit_phase(X, y, lam=LAM, tol=0.0, n_epochs=30)
+    with pytest.warns(RuntimeWarning):
+        rescaled = other.fit_phase(X, y, lam=LAM, tol=0.0, n_epochs=30)
+    assert_close(history[0], expected, rtol=1e-12, atol=0.0)
+    assert_close(rescaled, history, rtol=1e-8, atol=0.0)

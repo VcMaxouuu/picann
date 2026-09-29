@@ -24,11 +24,11 @@ def test_prox_receives_the_loss_gradient_at_the_retracted_point(kind, hidden):
         rescale(model, torch.empty(hidden[0], dtype=X.dtype).uniform_(0.2, 5.0, generator=generator))
     optimizer = model._optimizer(LAM)
     optimizer.zero_grad()
-    loss, s = model._backward(X, y, LAM)
+    loss, s = model._gradients(X, y, LAM)
     with torch.no_grad():
         assert_close(loss, model.loss(model(X), y), rtol=0.0, atol=0.0)
     if has_hidden(model):
-        model._retract(s, optimizer)
+        model._normalize(s, optimizer)
     expected = loss_gradients(model, X, y)["layers.0.weight"]
     assert_close(model.selector.weight.grad, expected, rtol=1e-10, atol=1e-15)
 
@@ -48,20 +48,15 @@ def test_fit_calibrates_and_fits_on_the_same_design(monkeypatch, dtype):
         seen.append(("calibrate", Z))
         return calibrate(Z, *args, **kwargs)
 
-    finals = []
-
-    def spy_phase(Z, target, lam, tol, n_epochs, final):
+    def spy_phase(Z, target, lam, tol, n_epochs):
         seen.append(("phase", Z))
-        finals.append(final)
         return torch.empty(0)
 
     monkeypatch.setattr(model, "calibrate", spy_calibrate)
-    monkeypatch.setattr(model, "_fit_phase", spy_phase)
+    monkeypatch.setattr(model, "fit_phase", spy_phase)
     model.fit(X, y, generator=torch.Generator().manual_seed(0))
 
     assert [name for name, _ in seen] == ["calibrate"] + ["phase"] * model.n_phases
-    # the dropped columns are tested at the calibrated level when the path ends
-    assert finals == [False] * (model.n_phases - 1) + [True]
     design = seen[0][1]
     assert design.dtype == dtype
     assert_close(design.mean(dim=0), torch.zeros(5, dtype=dtype), rtol=0.0, atol=1e-5)

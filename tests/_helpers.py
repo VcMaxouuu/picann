@@ -53,9 +53,9 @@ def full_step(
     r"""Take one step of the algorithm, as :meth:`SelectionMLP.fit_phase` does:
     gradients, retraction onto :math:`s = 1`, proximal Adam step."""
     optimizer.zero_grad()
-    loss, s = model._backward(X, y, lam)
+    loss, s = model._gradients(X, y, lam)
     if has_hidden(model):
-        s = model._retract(s, optimizer)
+        s = model._normalize(s, optimizer)
     optimizer.param_groups[0]["penalty_weights"] = s.unsqueeze(-1)
     optimizer.step()
     return loss, s
@@ -71,10 +71,10 @@ def loss_gradients(model: SelectionMLP, X: Tensor, y: Tensor) -> dict[str, Tenso
 def backward_gradients(
     model: SelectionMLP, X: Tensor, y: Tensor, lam: float
 ) -> dict[str, Tensor]:
-    r"""Return the gradients :meth:`SelectionMLP._backward` leaves in the
+    r"""Return the gradients :meth:`SelectionMLP._gradients` leaves in the
     parameters."""
     model.zero_grad()
-    model._backward(X, y, lam)
+    model._gradients(X, y, lam)
     return {name: parameter.grad.clone() for name, parameter in model.named_parameters()}
 
 
@@ -83,8 +83,8 @@ def multiplier_gradients(model: SelectionMLP, X: Tensor, lam: float) -> dict[str
     \|W^{(1)}_{k \cdot}\|_1` held fixed, by autograd through
     :math:`s_k = \max_i |a_{ik}|` with the activation masks frozen."""
     names, parameters = zip(*model.named_parameters())
-    _, preactivations = model._forward_with_preactivations(X)
-    a = model._jacobian(model._masks(preactivations))
+    _, masks = model._forward(X)
+    a = model._jacobian(masks)
     mu = lam * model.selector.weight.detach().abs().sum(dim=1)
     penalty = (mu * a.abs().amax(dim=0)).sum()
     grads = torch.autograd.grad(penalty, parameters, allow_unused=True)
@@ -138,15 +138,26 @@ def null_point(model: SelectionMLP, X: Tensor, y: Tensor) -> None:
     model._linears[-1].bias.add_(model.loss.null_mle(y) - eta[0])
 
 
+def preactivations(model: SelectionMLP, X: Tensor) -> tuple[Tensor, list[Tensor]]:
+    r"""Return the linear predictor and the pre-activations of the hidden
+    layers, attached to the graph."""
+    hs, h = [], X
+    for module in model.layers:
+        if isinstance(module, torch.nn.LeakyReLU):
+            hs.append(h)
+        h = module(h)
+    return h.squeeze(-1), hs
+
+
 @torch.no_grad()
 def is_generic(model: SelectionMLP, X: Tensor, margin: float = 1e-3) -> bool:
     r"""Tell whether the model is away from every activation boundary and from
     every tie of the maxima :math:`s_k` between observations whose masks
     differ, so that finite differences see a single smooth piece."""
-    _, preactivations = model._forward_with_preactivations(X)
-    if any(h.abs().min() < margin for h in preactivations):
+    _, hs = preactivations(model, X)
+    if any(h.abs().min() < margin for h in hs):
         return False
-    masks = model._masks(preactivations)
+    _, masks = model._forward(X)
     a = model._jacobian(masks).abs()
     top = a.amax(dim=0)
     for k in range(a.shape[1]):

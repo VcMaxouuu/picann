@@ -34,8 +34,8 @@ def test_null_gradient_matches_autograd(kind, hidden):
 
     if has_hidden(model):
         with torch.no_grad():
-            _, preactivations = model._forward_with_preactivations(X)
-            a = model._jacobian(model._masks(preactivations))
+            _, masks = model._forward(X)
+            a = model._jacobian(masks)
         assert_close(a, a[:1].expand_as(a), rtol=0.0, atol=0.0)
         a0 = a[0]
     else:
@@ -53,10 +53,10 @@ def test_null_gradient_matches_autograd(kind, hidden):
 def _one_step(model, X, y, lam):
     optimizer = model._optimizer(lam)
     optimizer.zero_grad()
-    loss, s = model._backward(X, y, lam)
+    loss, s = model._gradients(X, y, lam)
     grads = {name: parameter.grad.clone() for name, parameter in model.named_parameters()}
     if has_hidden(model):
-        s = model._retract(s, optimizer)
+        s = model._normalize(s, optimizer)
     optimizer.param_groups[0]["penalty_weights"] = s.unsqueeze(-1)
     optimizer.step()
     return grads

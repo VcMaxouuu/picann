@@ -33,9 +33,9 @@ CASES = [
 def _kkt_residuals(model, X, y, lam):
     optimizer = model._optimizer(lam)
     optimizer.zero_grad()
-    _, s = model._backward(X, y, lam)
+    _, s = model._gradients(X, y, lam)
     if has_hidden(model):
-        s = model._retract(s, optimizer)
+        s = model._normalize(s, optimizer)
     w1 = model.selector.weight
     g = w1.grad
     support = w1.detach() != 0.0

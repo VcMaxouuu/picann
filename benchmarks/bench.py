@@ -46,7 +46,7 @@ def _worker(name: str, seeds: list[int]) -> None:
         torch.manual_seed(seed)
         model = Regressor(X.shape[1], hidden)
         epochs: list[int] = []
-        # The phases fit runs: _fit_phase where it exists, fit_phase before.
+        # The phases fit runs: fit_phase, or _fit_phase in the versions that had it.
         method = "_fit_phase" if hasattr(model, "_fit_phase") else "fit_phase"
         phase = getattr(model, method)
 

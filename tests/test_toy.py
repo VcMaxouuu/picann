@@ -63,8 +63,8 @@ def test_toy_example_without_the_multiplier_term_misses_it(monkeypatch):
     model, X, y = _toy_model()
     monkeypatch.setattr(
         model,
-        "_linearised_output",
-        lambda masks, U: torch.zeros((), dtype=U.dtype, requires_grad=True),
+        "_multiplier",
+        lambda masks, a, lam: torch.zeros((), dtype=a.dtype, requires_grad=True),
     )
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
