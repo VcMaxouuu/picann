@@ -30,13 +30,11 @@ Fichier de suivi. En cas de reprise : relire ce fichier et `git log`, puis repre
        final à λ_DB avec relance (commit dfbb1c0).
 6. [x] Cas limites (§3.5) : neurone à s_k = 0 (E1), modèle linéaire (tests).
 7. [x] Article réécrit, compilé (seules références indéfinies : les 3 TODO(Max)).
-8. [ ] Rapport final (en cours) : attendre test H0 lent et benchmark final.
+8. [x] Rapport final : `RAPPORT.md`.
 
 ## Tâche en cours
 
-Étape 8 : test H0 lent sur le nouveau code (`tests/test_null_rate.py --runslow`),
-benchmark final (`benchmarks/results/after.json`), cas « FP persistant » avec tol/10,
-puis rapport.
+Aucune : mission terminée (voir `RAPPORT.md`).
 
 ## Décisions
 
@@ -90,7 +88,9 @@ deux sens). Variantes rejetées :
   à chaque ensemble actif.
 
 Test H0 lent (100 jeux, n=100, p=20, (16, 8), α = 0,05), ancien code :
-P̂(Ŝ = ∅) = 0,96 (gaussien), 0,89 (binaire) ; cible 0,95 ± 0,022.
+P̂(Ŝ = ∅) = 0,96 (gaussien), 0,89 (binaire) ; cible 0,95 ± 0,022. Nouveau code : identique.
+
+tol/10 sur les FP non linéaires : graine 4 corrigée ; graines 32 (x68) et 47 persistent.
 
 ## Audit (étape 1) — code d'origine (commit 49f7e67) contre le §1
 

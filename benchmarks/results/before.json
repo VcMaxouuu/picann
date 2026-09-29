@@ -1,0 +1,472 @@
+[
+ {
+  "scenario": "linear_p100",
+  "seed": 0,
+  "time": 2.1045848250000745,
+  "epochs": [
+   240,
+   230,
+   110,
+   260,
+   330
+  ],
+  "selected": [
+   24,
+   31,
+   51
+  ],
+  "support": [
+   24,
+   31,
+   51
+  ],
+  "lambda": 0.24044716358184814,
+  "peak_rss_mb": 675.78125,
+  "rss_growth_mb": 4.5,
+  "threads": 4
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 1,
+  "time": 2.160544460999972,
+  "epochs": [
+   320,
+   250,
+   300,
+   130,
+   160
+  ],
+  "selected": [
+   0,
+   67,
+   76
+  ],
+  "support": [
+   0,
+   67,
+   76
+  ],
+  "lambda": 0.23965859413146973,
+  "peak_rss_mb": 675.953125,
+  "rss_growth_mb": 0.171875,
+  "threads": 4
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 2,
+  "time": 2.445925927999724,
+  "epochs": [
+   270,
+   400,
+   230,
+   200,
+   140
+  ],
+  "selected": [
+   17,
+   58,
+   96
+  ],
+  "support": [
+   17,
+   58,
+   96
+  ],
+  "lambda": 0.24152018129825592,
+  "peak_rss_mb": 676.0390625,
+  "rss_growth_mb": 0.0859375,
+  "threads": 4
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 3,
+  "time": 2.1838569219999044,
+  "epochs": [
+   350,
+   560,
+   80,
+   190,
+   170
+  ],
+  "selected": [
+   25,
+   65,
+   71
+  ],
+  "support": [
+   25,
+   65,
+   71
+  ],
+  "lambda": 0.2419978380203247,
+  "peak_rss_mb": 676.0390625,
+  "rss_growth_mb": 0.0,
+  "threads": 4
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 4,
+  "time": 1.737136988000202,
+  "epochs": [
+   260,
+   130,
+   400,
+   110,
+   230
+  ],
+  "selected": [
+   94,
+   97,
+   99
+  ],
+  "support": [
+   94,
+   97,
+   99
+  ],
+  "lambda": 0.24125589430332184,
+  "peak_rss_mb": 676.0390625,
+  "rss_growth_mb": 0.0,
+  "threads": 4
+ },
+ {
+  "scenario": "linear_p1000",
+  "seed": 0,
+  "time": 6.531072826000127,
+  "epochs": [
+   410,
+   290,
+   730,
+   650,
+   610
+  ],
+  "selected": [
+   645,
+   707,
+   851
+  ],
+  "support": [
+   645,
+   707,
+   851
+  ],
+  "lambda": 0.2783574163913727,
+  "peak_rss_mb": 687.0859375,
+  "rss_growth_mb": 11.375,
+  "threads": 4
+ },
+ {
+  "scenario": "linear_p1000",
+  "seed": 1,
+  "time": 6.792523188999894,
+  "epochs": [
+   230,
+   600,
+   820,
+   1000,
+   290
+  ],
+  "selected": [
+   519,
+   786,
+   932
+  ],
+  "support": [
+   519,
+   786,
+   932
+  ],
+  "lambda": 0.27957576513290405,
+  "peak_rss_mb": 688.2890625,
+  "rss_growth_mb": 1.203125,
+  "threads": 4
+ },
+ {
+  "scenario": "linear_p1000",
+  "seed": 2,
+  "time": 3.337046927999836,
+  "epochs": [
+   430,
+   70,
+   210,
+   170,
+   520
+  ],
+  "selected": [
+   213,
+   502,
+   673
+  ],
+  "support": [
+   213,
+   502,
+   673
+  ],
+  "lambda": 0.2797211706638336,
+  "peak_rss_mb": 688.2890625,
+  "rss_growth_mb": 0.0,
+  "threads": 4
+ },
+ {
+  "scenario": "linear_p1000",
+  "seed": 3,
+  "time": 4.402281115999813,
+  "epochs": [
+   290,
+   100,
+   620,
+   420,
+   400
+  ],
+  "selected": [
+   54,
+   132,
+   301
+  ],
+  "support": [
+   54,
+   132,
+   301
+  ],
+  "lambda": 0.2812947630882263,
+  "peak_rss_mb": 688.2890625,
+  "rss_growth_mb": 0.0,
+  "threads": 4
+ },
+ {
+  "scenario": "linear_p1000",
+  "seed": 4,
+  "time": 5.237392223999905,
+  "epochs": [
+   270,
+   570,
+   390,
+   380,
+   560
+  ],
+  "selected": [
+   400,
+   570,
+   926
+  ],
+  "support": [
+   400,
+   570,
+   926
+  ],
+  "lambda": 0.28450024127960205,
+  "peak_rss_mb": 688.2890625,
+  "rss_growth_mb": 0.0,
+  "threads": 4
+ },
+ {
+  "scenario": "linear_p5000",
+  "seed": 0,
+  "time": 7.456609791999654,
+  "epochs": [
+   500,
+   510,
+   710,
+   310,
+   330
+  ],
+  "selected": [
+   2155,
+   3725,
+   3739
+  ],
+  "support": [
+   2155,
+   3725,
+   3739
+  ],
+  "lambda": 0.3062095642089844,
+  "peak_rss_mb": 728.921875,
+  "rss_growth_mb": 35.22265625,
+  "threads": 4
+ },
+ {
+  "scenario": "linear_p5000",
+  "seed": 1,
+  "time": 5.346495941000285,
+  "epochs": [
+   150,
+   430,
+   220,
+   550,
+   350
+  ],
+  "selected": [
+   2112,
+   2114,
+   2650,
+   3082,
+   4647
+  ],
+  "support": [
+   2112,
+   2114,
+   2650
+  ],
+  "lambda": 0.3069356083869934,
+  "peak_rss_mb": 732.28125,
+  "rss_growth_mb": 3.359375,
+  "threads": 4
+ },
+ {
+  "scenario": "linear_p5000",
+  "seed": 2,
+  "time": 7.930181061999974,
+  "epochs": [
+   550,
+   500,
+   610,
+   620,
+   250
+  ],
+  "selected": [
+   317,
+   3804,
+   4662
+  ],
+  "support": [
+   317,
+   3804,
+   4662
+  ],
+  "lambda": 0.3050144612789154,
+  "peak_rss_mb": 732.3671875,
+  "rss_growth_mb": 0.0859375,
+  "threads": 4
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 0,
+  "time": 2.7614971020002486,
+  "epochs": [
+   370,
+   140,
+   270,
+   280,
+   680
+  ],
+  "selected": [
+   33,
+   52,
+   75
+  ],
+  "support": [
+   33,
+   52,
+   75
+  ],
+  "lambda": 0.15195854008197784,
+  "peak_rss_mb": 684.12890625,
+  "rss_growth_mb": 11.3984375,
+  "threads": 4
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 1,
+  "time": 2.6889685749997625,
+  "epochs": [
+   420,
+   260,
+   170,
+   270,
+   330
+  ],
+  "selected": [
+   31,
+   52,
+   56
+  ],
+  "support": [
+   31,
+   52,
+   56
+  ],
+  "lambda": 0.15755921602249146,
+  "peak_rss_mb": 684.14453125,
+  "rss_growth_mb": 0.015625,
+  "threads": 4
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 2,
+  "time": 3.173999836999883,
+  "epochs": [
+   410,
+   170,
+   220,
+   390,
+   670
+  ],
+  "selected": [
+   28,
+   57,
+   96
+  ],
+  "support": [
+   28,
+   57,
+   96
+  ],
+  "lambda": 0.15193644165992737,
+  "peak_rss_mb": 684.14453125,
+  "rss_growth_mb": 0.0,
+  "threads": 4
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 3,
+  "time": 1.6255520569998225,
+  "epochs": [
+   160,
+   430,
+   160,
+   100,
+   150
+  ],
+  "selected": [
+   19,
+   23,
+   79
+  ],
+  "support": [
+   19,
+   23,
+   79
+  ],
+  "lambda": 0.15518039464950562,
+  "peak_rss_mb": 684.19921875,
+  "rss_growth_mb": 0.0546875,
+  "threads": 4
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 4,
+  "time": 2.676193875000081,
+  "epochs": [
+   420,
+   170,
+   250,
+   90,
+   510
+  ],
+  "selected": [
+   4,
+   28,
+   79
+  ],
+  "support": [
+   4,
+   28,
+   79
+  ],
+  "lambda": 0.1521753966808319,
+  "peak_rss_mb": 684.19921875,
+  "rss_growth_mb": 0.0,
+  "threads": 4
+ }
+]

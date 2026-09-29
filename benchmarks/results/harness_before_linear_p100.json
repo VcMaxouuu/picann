@@ -1,0 +1,1305 @@
+[
+ {
+  "scenario": "linear_p100",
+  "seed": 0,
+  "time": 4.200880737000261,
+  "epochs": [
+   240,
+   230,
+   110,
+   260,
+   330
+  ],
+  "unconverged": 0,
+  "selected": [
+   24,
+   31,
+   51
+  ],
+  "support": [
+   24,
+   31,
+   51
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 1,
+  "time": 4.16669200699971,
+  "epochs": [
+   320,
+   250,
+   300,
+   130,
+   160
+  ],
+  "unconverged": 0,
+  "selected": [
+   0,
+   67,
+   76
+  ],
+  "support": [
+   0,
+   67,
+   76
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 2,
+  "time": 4.20454025700019,
+  "epochs": [
+   270,
+   400,
+   230,
+   200,
+   140
+  ],
+  "unconverged": 0,
+  "selected": [
+   17,
+   58,
+   96
+  ],
+  "support": [
+   17,
+   58,
+   96
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 3,
+  "time": 4.82522186999995,
+  "epochs": [
+   350,
+   560,
+   80,
+   190,
+   170
+  ],
+  "unconverged": 0,
+  "selected": [
+   25,
+   65,
+   71
+  ],
+  "support": [
+   25,
+   65,
+   71
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 4,
+  "time": 2.0529581609998786,
+  "epochs": [
+   260,
+   130,
+   400,
+   110,
+   230
+  ],
+  "unconverged": 0,
+  "selected": [
+   94,
+   97,
+   99
+  ],
+  "support": [
+   94,
+   97,
+   99
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 5,
+  "time": 2.8158242350000364,
+  "epochs": [
+   470,
+   210,
+   240,
+   250,
+   370
+  ],
+  "unconverged": 0,
+  "selected": [
+   21,
+   24,
+   62
+  ],
+  "support": [
+   21,
+   24,
+   62
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 6,
+  "time": 2.2194606429998203,
+  "epochs": [
+   310,
+   430,
+   170,
+   180,
+   230
+  ],
+  "unconverged": 0,
+  "selected": [
+   76,
+   89,
+   97
+  ],
+  "support": [
+   76,
+   89,
+   97
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 7,
+  "time": 2.413586288999795,
+  "epochs": [
+   450,
+   220,
+   330,
+   130,
+   210
+  ],
+  "unconverged": 0,
+  "selected": [
+   34,
+   56,
+   99
+  ],
+  "support": [
+   34,
+   56,
+   99
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 8,
+  "time": 2.5989538489998267,
+  "epochs": [
+   330,
+   430,
+   250,
+   280,
+   240
+  ],
+  "unconverged": 0,
+  "selected": [
+   48,
+   71,
+   95
+  ],
+  "support": [
+   48,
+   71,
+   95
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 9,
+  "time": 1.9857224379998115,
+  "epochs": [
+   470,
+   150,
+   110,
+   240,
+   200
+  ],
+  "unconverged": 0,
+  "selected": [
+   31,
+   51,
+   76
+  ],
+  "support": [
+   31,
+   51,
+   76
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 10,
+  "time": 4.624790313999711,
+  "epochs": [
+   520,
+   450,
+   130,
+   240,
+   1000
+  ],
+  "unconverged": 1,
+  "selected": [
+   59,
+   91,
+   96
+  ],
+  "support": [
+   59,
+   91,
+   96
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 11,
+  "time": 1.9445400879999397,
+  "epochs": [
+   310,
+   430,
+   60,
+   100,
+   210
+  ],
+  "unconverged": 0,
+  "selected": [
+   87,
+   96,
+   97
+  ],
+  "support": [
+   87,
+   96,
+   97
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 12,
+  "time": 2.1431738649998806,
+  "epochs": [
+   360,
+   200,
+   420,
+   160,
+   220
+  ],
+  "unconverged": 0,
+  "selected": [
+   52,
+   56,
+   57
+  ],
+  "support": [
+   52,
+   56,
+   57
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 13,
+  "time": 1.8550649290000365,
+  "epochs": [
+   280,
+   220,
+   160,
+   170,
+   290
+  ],
+  "unconverged": 0,
+  "selected": [
+   27,
+   78,
+   90
+  ],
+  "support": [
+   27,
+   78,
+   90
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 14,
+  "time": 2.096695131999695,
+  "epochs": [
+   460,
+   70,
+   200,
+   190,
+   420
+  ],
+  "unconverged": 0,
+  "selected": [
+   43,
+   73,
+   81
+  ],
+  "support": [
+   43,
+   73,
+   81
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 15,
+  "time": 2.6487640010000177,
+  "epochs": [
+   100,
+   210,
+   330,
+   520,
+   580
+  ],
+  "unconverged": 0,
+  "selected": [
+   1,
+   52,
+   74,
+   80,
+   85
+  ],
+  "support": [
+   52,
+   74,
+   85
+  ],
+  "tp": 3,
+  "fp": 2,
+  "exact": false
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 16,
+  "time": 1.8671812849997877,
+  "epochs": [
+   380,
+   300,
+   180,
+   150,
+   170
+  ],
+  "unconverged": 0,
+  "selected": [
+   5,
+   43,
+   53
+  ],
+  "support": [
+   5,
+   43,
+   53
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 17,
+  "time": 2.0006589919998987,
+  "epochs": [
+   340,
+   280,
+   110,
+   140,
+   380
+  ],
+  "unconverged": 0,
+  "selected": [
+   21,
+   37,
+   42
+  ],
+  "support": [
+   21,
+   37,
+   42
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 18,
+  "time": 1.621336588000304,
+  "epochs": [
+   140,
+   270,
+   240,
+   180,
+   150
+  ],
+  "unconverged": 0,
+  "selected": [
+   9,
+   42,
+   72
+  ],
+  "support": [
+   9,
+   42,
+   72
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 19,
+  "time": 1.8801802729999508,
+  "epochs": [
+   360,
+   260,
+   80,
+   170,
+   230
+  ],
+  "unconverged": 0,
+  "selected": [
+   21,
+   40,
+   64
+  ],
+  "support": [
+   21,
+   40,
+   64
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 20,
+  "time": 1.550750755000081,
+  "epochs": [
+   90,
+   120,
+   250,
+   210,
+   200
+  ],
+  "unconverged": 0,
+  "selected": [
+   13,
+   59,
+   67
+  ],
+  "support": [
+   13,
+   59,
+   67
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 21,
+  "time": 2.318724774000202,
+  "epochs": [
+   310,
+   150,
+   470,
+   200,
+   250
+  ],
+  "unconverged": 0,
+  "selected": [
+   18,
+   47,
+   80
+  ],
+  "support": [
+   18,
+   47,
+   80
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 22,
+  "time": 2.047274805000143,
+  "epochs": [
+   430,
+   150,
+   150,
+   190,
+   220
+  ],
+  "unconverged": 0,
+  "selected": [
+   49,
+   77,
+   85
+  ],
+  "support": [
+   49,
+   77,
+   85
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 23,
+  "time": 2.0097948269999506,
+  "epochs": [
+   200,
+   210,
+   260,
+   200,
+   280
+  ],
+  "unconverged": 0,
+  "selected": [
+   18,
+   41,
+   97
+  ],
+  "support": [
+   18,
+   41,
+   97
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 24,
+  "time": 2.7653590290001375,
+  "epochs": [
+   450,
+   310,
+   480,
+   240,
+   160
+  ],
+  "unconverged": 0,
+  "selected": [
+   37,
+   62,
+   86
+  ],
+  "support": [
+   37,
+   62,
+   86
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 25,
+  "time": 2.552931611999611,
+  "epochs": [
+   260,
+   360,
+   370,
+   210,
+   270
+  ],
+  "unconverged": 0,
+  "selected": [
+   28,
+   57,
+   69
+  ],
+  "support": [
+   28,
+   57,
+   69
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 26,
+  "time": 2.1611028130000705,
+  "epochs": [
+   630,
+   160,
+   80,
+   90,
+   330
+  ],
+  "unconverged": 0,
+  "selected": [
+   6,
+   11,
+   87
+  ],
+  "support": [
+   6,
+   11,
+   87
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 27,
+  "time": 3.3845121140002448,
+  "epochs": [
+   570,
+   370,
+   390,
+   370,
+   270
+  ],
+  "unconverged": 0,
+  "selected": [
+   40,
+   56,
+   87
+  ],
+  "support": [
+   40,
+   56,
+   87
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 28,
+  "time": 1.8485504629998104,
+  "epochs": [
+   440,
+   100,
+   180,
+   170,
+   240
+  ],
+  "unconverged": 0,
+  "selected": [
+   7,
+   82,
+   88
+  ],
+  "support": [
+   7,
+   82,
+   88
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 29,
+  "time": 1.5913827129998026,
+  "epochs": [
+   90,
+   120,
+   330,
+   270,
+   250
+  ],
+  "unconverged": 0,
+  "selected": [
+   38,
+   56,
+   91
+  ],
+  "support": [
+   38,
+   56,
+   91
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 30,
+  "time": 1.6792063960001542,
+  "epochs": [
+   90,
+   400,
+   150,
+   180,
+   260
+  ],
+  "unconverged": 0,
+  "selected": [
+   72,
+   74,
+   83
+  ],
+  "support": [
+   72,
+   74,
+   83
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 31,
+  "time": 2.017811808999795,
+  "epochs": [
+   210,
+   110,
+   390,
+   240,
+   210
+  ],
+  "unconverged": 0,
+  "selected": [
+   55,
+   70,
+   92
+  ],
+  "support": [
+   55,
+   70,
+   92
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 32,
+  "time": 1.6862037240002792,
+  "epochs": [
+   250,
+   60,
+   200,
+   280,
+   350
+  ],
+  "unconverged": 0,
+  "selected": [
+   6,
+   31,
+   51
+  ],
+  "support": [
+   6,
+   31,
+   51
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 33,
+  "time": 2.657944522999969,
+  "epochs": [
+   440,
+   420,
+   170,
+   230,
+   320
+  ],
+  "unconverged": 0,
+  "selected": [
+   11,
+   39,
+   42
+  ],
+  "support": [
+   11,
+   39,
+   42
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 34,
+  "time": 2.4248486449996562,
+  "epochs": [
+   420,
+   180,
+   320,
+   220,
+   210
+  ],
+  "unconverged": 0,
+  "selected": [
+   63,
+   69,
+   88
+  ],
+  "support": [
+   63,
+   69,
+   88
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 35,
+  "time": 3.0138983159999952,
+  "epochs": [
+   430,
+   300,
+   190,
+   610,
+   200
+  ],
+  "unconverged": 0,
+  "selected": [
+   1,
+   59,
+   70
+  ],
+  "support": [
+   1,
+   59,
+   70
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 36,
+  "time": 2.6754989050000404,
+  "epochs": [
+   520,
+   390,
+   430,
+   130,
+   190
+  ],
+  "unconverged": 0,
+  "selected": [
+   28,
+   73,
+   91
+  ],
+  "support": [
+   28,
+   73,
+   91
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 37,
+  "time": 1.8088838180001403,
+  "epochs": [
+   320,
+   260,
+   60,
+   200,
+   190
+  ],
+  "unconverged": 0,
+  "selected": [
+   0,
+   54,
+   64
+  ],
+  "support": [
+   0,
+   54,
+   64
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 38,
+  "time": 1.9479993360000663,
+  "epochs": [
+   210,
+   120,
+   460,
+   220,
+   150
+  ],
+  "unconverged": 0,
+  "selected": [
+   33,
+   39,
+   70
+  ],
+  "support": [
+   33,
+   39,
+   70
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 39,
+  "time": 1.3270683639998424,
+  "epochs": [
+   130,
+   150,
+   210,
+   90,
+   170
+  ],
+  "unconverged": 0,
+  "selected": [
+   2,
+   46,
+   96
+  ],
+  "support": [
+   2,
+   46,
+   96
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 40,
+  "time": 2.209866095000052,
+  "epochs": [
+   380,
+   400,
+   150,
+   110,
+   260
+  ],
+  "unconverged": 0,
+  "selected": [
+   5,
+   18,
+   78
+  ],
+  "support": [
+   5,
+   18,
+   78
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 41,
+  "time": 2.1484921100000065,
+  "epochs": [
+   120,
+   490,
+   380,
+   190,
+   200
+  ],
+  "unconverged": 0,
+  "selected": [
+   76,
+   82,
+   97
+  ],
+  "support": [
+   76,
+   82,
+   97
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 42,
+  "time": 2.4397338529997796,
+  "epochs": [
+   350,
+   350,
+   160,
+   210,
+   260
+  ],
+  "unconverged": 0,
+  "selected": [
+   7,
+   47,
+   94
+  ],
+  "support": [
+   7,
+   47,
+   94
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 43,
+  "time": 1.0317995440000232,
+  "epochs": [
+   140,
+   80,
+   130,
+   110,
+   250
+  ],
+  "unconverged": 0,
+  "selected": [
+   18,
+   68,
+   71
+  ],
+  "support": [
+   18,
+   68,
+   71
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 44,
+  "time": 2.1131126479999693,
+  "epochs": [
+   400,
+   100,
+   340,
+   160,
+   190
+  ],
+  "unconverged": 0,
+  "selected": [
+   12,
+   19,
+   26
+  ],
+  "support": [
+   12,
+   19,
+   26
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 45,
+  "time": 2.2385347310000725,
+  "epochs": [
+   300,
+   210,
+   140,
+   230,
+   280
+  ],
+  "unconverged": 0,
+  "selected": [
+   18,
+   20,
+   24
+  ],
+  "support": [
+   18,
+   20,
+   24
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 46,
+  "time": 2.380185427000015,
+  "epochs": [
+   340,
+   220,
+   350,
+   180,
+   270
+  ],
+  "unconverged": 0,
+  "selected": [
+   42,
+   87,
+   98
+  ],
+  "support": [
+   42,
+   87,
+   98
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 47,
+  "time": 2.40773761499986,
+  "epochs": [
+   370,
+   220,
+   270,
+   240,
+   310
+  ],
+  "unconverged": 0,
+  "selected": [
+   26,
+   39,
+   48
+  ],
+  "support": [
+   26,
+   39,
+   48
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 48,
+  "time": 2.854185744000006,
+  "epochs": [
+   290,
+   370,
+   270,
+   240,
+   460
+  ],
+  "unconverged": 0,
+  "selected": [
+   11,
+   46,
+   50,
+   62
+  ],
+  "support": [
+   46,
+   50,
+   62
+  ],
+  "tp": 3,
+  "fp": 1,
+  "exact": false
+ },
+ {
+  "scenario": "linear_p100",
+  "seed": 49,
+  "time": 1.800981252999918,
+  "epochs": [
+   280,
+   360,
+   170,
+   120,
+   250
+  ],
+  "unconverged": 0,
+  "selected": [
+   52,
+   63,
+   95
+  ],
+  "support": [
+   52,
+   63,
+   95
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ }
+]
