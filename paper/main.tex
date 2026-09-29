@@ -269,21 +269,31 @@ Since the rescalings~\eqref{eq:positive-rescaling} change neither the fit nor th
 \end{equation}
 Problems~\eqref{eq:optiprob} and~\eqref{eq:constrained} are equivalent: they have the same optimal value, $\Nrm(\hat\bth)$ solves~\eqref{eq:constrained} whenever $\hat\bth$ solves~\eqref{eq:optiprob}, and every solution of~\eqref{eq:constrained} solves~\eqref{eq:optiprob}. By Proposition~\ref{prop:normalization}(iii), the selected set $\hat S=\{j:\hat W^{(1)}_{\cdot j}\neq\bzero\}$ is the same for both. \emph{From now on, we work with~\eqref{eq:constrained}}: both the calibration of $\lambda$ and the optimization become statements about a lasso.
 
-Let $\varphi$ denote all the parameters other than $\Wone$ (every bias and $W^{(2)},\ldots,W^{(L)}$), let $\br=\nabla_{\bet}\mathcal L_n(\bet;\by)$ at $\bet=f_{\bth}(X)$ be the gradient of the loss with respect to the outputs, and let
+Let $\varphi$ denote all the parameters other than $\Wone$ (every bias and $W^{(2)},\ldots,W^{(L)}$), and let $\br=\nabla_{\bet}\mathcal L_n(\bet;\by)$ at $\bet=f_{\bth}(X)$ be the gradient of the loss with respect to the outputs. The following result gives the conditions that the calibration of Section~\ref{sec:lambda-calibration} and the algorithm of Section~\ref{sec:optimization} rely on. It holds where the activation patterns are locally constant, that is, where no hidden pre-activation vanishes at any observation.
+
+\begin{proposition}[Optimality conditions of~\eqref{eq:constrained}]\label{prop:kkt}
+Let $\bth\in\Thetaone$ be a point where the activation patterns are locally constant. Then:
+\begin{enumerate}
+\item[(i)] the gradient of $\ell$ with respect to the $k$th row of $\Wone$ is
 \begin{equation}\label{eq:first-layer-gradient}
     \mathbf g_k=\nabla_{W^{(1)}_{k,\cdot}}\ell=X^\top\big(\ba_{\cdot k}\odot\br\big),
-    \qquad k=1,\ldots,p_1,
+    \qquad \|\ba_{\cdot k}\|_\infty=1,\qquad k=1,\ldots,p_1 ;
 \end{equation}
-by the chain rule. The constraint does not involve $\Wone$: the sensitivities depend on the first layer only through the activation patterns, which are locally constant. The first-order optimality conditions of~\eqref{eq:constrained} therefore read
+\item[(ii)] if $\bth$ is a local minimizer of~\eqref{eq:constrained}, there are Lagrange multipliers $\nu_1,\ldots,\nu_{p_1}$ such that
 \begin{equation}\label{eq:kkt}
     \bzero\in\mathbf g_k+\lambda\,\partial\PenWonek\quad(k=1,\ldots,p_1),
     \qquad
-    \nabla_\varphi\ell+\sum_{k=1}^{p_1}\nu_k\nabla_\varphi s_k=\bzero,
+    \nabla_\varphi\ell+\sum_{k=1}^{p_1}\nu_k\nabla_\varphi s_k=\bzero .
 \end{equation}
-for some Lagrange multipliers $\nu_1,\ldots,\nu_{p_1}$. The first condition is that of a lasso: $g_{kj}=-\lambda\operatorname{sign}W^{(1)}_{kj}$ where $W^{(1)}_{kj}\neq0$, and
+\end{enumerate}
+The first condition in~\eqref{eq:kkt} is that of a lasso: $g_{kj}=-\lambda\operatorname{sign}W^{(1)}_{kj}$ where $W^{(1)}_{kj}\neq0$, and
 \begin{equation}\label{eq:zero-test}
     |g_{kj}|\leq\lambda \quad\text{where } W^{(1)}_{kj}=0 .
 \end{equation}
+\end{proposition}
+\begin{proof}
+(i) Since $\eta_i$ depends on $\Wone$ only through $\mathbf h^{(1)}_i=\mathbf b^{(1)}+\Wone\bx_i$, the chain rule gives $\partial\ell/\partial W^{(1)}_{kj}=\sum_ir_i\,a_{ik}\,x_{ij}$, and $\|\ba_{\cdot k}\|_\infty=s_k=1$ on $\Thetaone$. (ii) With the patterns frozen, $s_k$ depends neither on $\Wone$ nor on the biases, and depends on $W^{(2)}$ only through its column $W^{(2)}_{\cdot,k}$, in which it is positively homogeneous of degree one, so that $\langle W^{(2)}_{\cdot,k},\nabla_{W^{(2)}_{\cdot,k}}s_k\rangle=s_k=1$. The constraint gradients $\nabla_\varphi s_k$ are therefore linearly independent, and~\eqref{eq:kkt} is the Lagrange multiplier rule for the minimization of the smooth function $\ell$ plus the convex penalty $\lambda\PenWone$ under smooth equality constraints that do not involve $\Wone$.
+\end{proof}
 
 \section{Choice of $\lambda$}\label{sec:lambda-calibration}
 \subsection{Calibration under the null}
