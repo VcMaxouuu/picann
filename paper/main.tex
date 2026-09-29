@@ -173,6 +173,15 @@ Second, the leaky ReLU is positively homogeneous:
 \end{equation*}
 Although this property holds for every hidden layer, it is specifically required at the first one for the scale-invariance of the adaptive penalty developed in Section~\ref{sec:gauge}. 
 
+By the first property, a sensitivity scale can vanish only if the
+backpropagated signal from neuron $k$ to the output is identically zero over all observations. With one hidden layer, $s_k(\bth)=0$ if and only if $W^{(2)}_{\cdot,k}=\bzero$, so that neuron $k$ is disconnected from the output. With multiple hidden layers, a vanishing sensitivity would similarly require the downstream weights to cancel the backpropagated signal at every observation, an event of probability zero for weights drawn from a continuous distribution. Since the downstream weights are not subject to sparsity-inducing penalties, such exact degeneracies are not expected to arise in practice. We therefore work under the following mild nondegeneracy assumption.
+
+\begin{assumption}[Nondegenerate sensitivities]\label{ass:sensitivity}
+The parameter $\bth$ satisfies $s_k(\bth)>0$ for
+$k=1,\ldots,p_1$.
+\end{assumption}
+
+Should a neuron with $s_k(\bth)=0$ nevertheless occur during training, it is left untouched and ignored for variable selection: variables that reach the output only through this neuron are not selected. With one hidden layer, such a neuron is disconnected from the output and can simply be removed.
 
 \subsection{The Scale Ambiguity and the Adaptive Regularization}\label{sec:gauge}
 
@@ -211,7 +220,7 @@ Given data $(X,\by)$, we consider the training problem
     \lambda\sum_{k=1}^{p_1}s_k(\bth)\PenWonek,
     \tag{P}
 \end{equation}
-where $\mathcal{L}_n(\bet;\by)$ is a data-dependent goodness-of-fit measure of the vector of outputs, and $\lambda\geq0$ is the regularization parameter controlling the strength of the adaptive first-layer penalty, set to the level $\lamDB$ developed in Section \ref{sec:lambda-calibration}. The full expression $J_\lambda$ is referred to as the cost function. Throughout this work, we consider three statistical learning settings: regression, binary classification, and survival analysis under the Cox proportional hazards model. In each case, the goodness-of-fit term $\mathcal{L}_n$ is chosen with a specific normalization that will play a central role in the calibration of $\lambda$. We consider the same three losses as \citet{PIC-SMS2026}.
+where $\mathcal{L}_n(\bet;\by)$ is a data-dependent goodness-of-fit measure of the vector of outputs, and $\lambda\geq0$ is the regularization parameter controlling the strength of the adaptive first-layer penalty. Rather than selecting $\lambda$ by cross-validation, we set it to the closed-form, data-dependent threshold $\lamDB$ developed in Section~\ref{sec:lambda-calibration}. The full expression $J_\lambda$ is referred to as the cost function. Throughout this work, we consider three statistical learning settings: regression, binary classification, and survival analysis under the Cox proportional hazards model. In each case, the goodness-of-fit term $\mathcal{L}_n$ is chosen with a specific normalization that will play a central role in the calibration of $\lamDB$. We consider the same three losses as \citet{PIC-SMS2026}.
 
 For regression, with $\by\in\R^n$, we use the square-root loss
 \begin{equation*}
@@ -242,7 +251,7 @@ choices. They are selected so that the score of the loss at the null model is a 
 Since the rescaling~\eqref{eq:positive-rescaling} divides $s_k$ by $c$, choosing $c=s_k(\bth)$ brings every sensitivity to one.
 
 \begin{definition}[Normalized network]\label{def:normalized}
-Let $\bth$ satisfy $s_k(\bth)>0$ for $k=1,\ldots,p_1$. The \emph{normalized network} $\Nrm(\bth)$ is obtained from $\bth$ by applying the following transformation to every first-layer neuron $k$:
+The \emph{normalized network} $\Nrm(\bth)$ is obtained from $\bth$ by applying the following transformation to every first-layer neuron $k$:
 \begin{equation*}
     W^{(1)}_{k,\cdot}\mapsto s_k(\bth)\,W^{(1)}_{k,\cdot},\qquad
     b^{(1)}_k\mapsto s_k(\bth)\,b^{(1)}_k,\qquad
@@ -252,16 +261,13 @@ We write $\Thetaone=\{\bth:s_k(\bth)=1,\ k=1,\ldots,p_1\}$ for the set of normal
 \end{definition}
 
 \begin{proposition}[Normalization]\label{prop:normalization}
-Let $\bth$ satisfy $s_k(\bth)>0$ for $k=1,\ldots,p_1$. Then
+\,
 \begin{enumerate}
 \item[(i)] $f_{\Nrm(\bth)}=f_{\bth}$ and $\mathcal P(\Nrm(\bth))=\mathcal P(\bth)$: the normalized network computes the same function, with the same penalty;
 \item[(ii)] $\Nrm(\bth)\in\Thetaone$, and $\Nrm(\bth)=\bth$ if and only if $\bth\in\Thetaone$;
 \item[(iii)] $\Nrm(\bth)$ and $\bth$ have the same zero entries in $\Wone$.
 \end{enumerate}
 \end{proposition}
-\begin{proof}
-(i) follows from the positive homogeneity of the first-layer activation and Proposition~\ref{prop:penalty-scale-invariance}. (ii) The rescaling of neuron $k$ divides $s_k$ by $c=s_k(\bth)$ and leaves the other sensitivities unchanged; it is the identity when $s_k(\bth)=1$. (iii) Rows of $\Wone$ are multiplied by positive factors.
-\end{proof}
 
 Hence, nothing is lost by restricting~\eqref{eq:optiprob} to normalized networks. On $\Thetaone$, the adaptive penalty becomes a plain lasso on the first layer:
 \begin{equation}\label{eq:constrained}
@@ -271,41 +277,65 @@ Hence, nothing is lost by restricting~\eqref{eq:optiprob} to normalized networks
 Problems~\eqref{eq:optiprob} and~\eqref{eq:constrained} are equivalent: they have the same optimal value, $\Nrm(\hat\bth)$ solves~\eqref{eq:constrained} whenever $\hat\bth$ solves~\eqref{eq:optiprob}, and every solution of~\eqref{eq:constrained} solves~\eqref{eq:optiprob}. Moreover, by Proposition~\ref{prop:normalization} the selected set $\hat S=\{j:\hat W^{(1)}_{\cdot j}\neq\bzero\}$ is the same for both. From now on, we work with~\eqref{eq:constrained}.
 
 \subsection{Optimality Conditions}\label{sec:kkt}
-Problem~\eqref{eq:constrained} has simple first-order conditions, and the rest of the paper rests on them: at the null model, they give the calibration of $\lambda$ (Section~\ref{sec:lambda-calibration}); away from it, the algorithm is built to satisfy them (Section~\ref{sec:optimization}).
+Problem~\eqref{eq:constrained} has simple first-order conditions that play a central role throughout the paper. At the null model, they provide the basis for calibrating $\lambda$ (Section~\ref{sec:lambda-calibration}), while away from the null, they characterize the conditions targeted by the optimization procedure (Section~\ref{sec:optimization}).
 
-Split the parameters as $\bth=(\Wone,\varphi)$, where $\varphi$ collects every bias and $W^{(2)},\ldots,W^{(L)}$. Write $\ell(\bth)=\mathcal L_n(f_{\bth}(X);\by)$ for the loss and $\br=\nabla_{\bet}\mathcal L_n(\bet;\by)$, at $\bet=f_{\bth}(X)$, for its gradient with respect to the outputs. Since $\eta_i$ depends on $\Wone$ only through $\mathbf h^{(1)}_i$, the chain rule gives the gradient with respect to the $k$th row of the first layer,
+Partition the parameters as $\bth=(\Wone,\varphi)$, where $\varphi$ collects all biases and the downstream weight matrices $W^{(2)},\ldots,W^{(L)}$. Define
+\begin{equation*}
+    \br=\left.\nabla_{\boldsymbol{\eta}}
+    \mathcal L_n(\boldsymbol{\eta};\by)
+    \right|_{\boldsymbol{\eta}=f_{\bth}(X)}
+    \in\R^n
+\end{equation*}
+as the gradient of the loss with respect to the network outputs. For each first-layer neuron $k=1,\ldots,p_1$, the gradient with respect to its incoming weights is
 \begin{equation}\label{eq:first-layer-gradient}
-    \mathbf g_k=\nabla_{W^{(1)}_{k,\cdot}}\ell=X^\top\big(\ba_{\cdot k}\odot\br\big),
-    \qquad k=1,\ldots,p_1 .
+    \mathbf{g}_k=\nabla_{W^{(1)}_{k,\cdot}}
+    \mathcal L_n\left(f_{\bth}(X);\by\right)
+    =X^\top\big(\ba_{\cdot k}\odot\br\big)
+    \in\R^p.
 \end{equation}
-It combines the association between the inputs and the residuals, through $\br$, with the downstream network, through $\ba_{\cdot k}$, whose magnitude is fixed on $\Thetaone$: $\|\ba_{\cdot k}\|_\infty=s_k=1$.
+The second equality follows directly from the chain rule, where $\odot$ denotes the element-wise (Hadamard) product, so that
+$(\ba_{\cdot k}\odot\br)_i=a_{ik}r_i$. Hence, $\mathbf g_k$ takes the form of an input--score association, where the loss contribution $\br$ is modulated observation-wise by the downstream sensitivity vector $\ba_{\cdot k}$. On $\Thetaone$, this downstream contribution is normalized by construction,
+\begin{equation*}
+    \|\ba_{\cdot k}\|_\infty=s_k(\bth)=1,
+    \qquad k=1,\ldots,p_1,
+\end{equation*}
+so that differences in the scale of the downstream network do not affect the magnitude of the first-layer optimality conditions.
 
-\begin{proposition}[Optimality conditions of~\eqref{eq:constrained}]\label{prop:kkt}
-Let $\bth\in\Thetaone$ be a local minimizer of~\eqref{eq:constrained} where no hidden pre-activation vanishes, and let $\mu_k=\lambda\PenWonek$. Then
+\begin{proposition}[Optimality conditions of~\eqref{eq:constrained}]
+\label{prop:kkt}
+Let $\bth\in\Thetaone$ be a local minimizer of~\eqref{eq:constrained}
+near which the loss and the sensitivity scales $s_k$ are continuously
+differentiable. Let $\mu_k=\lambda\PenWonek$. Then
 \begin{equation}\label{eq:kkt}
-    \bzero\in\mathbf g_k+\lambda\,\partial\PenWonek\quad(k=1,\ldots,p_1),
+    \bzero\in\mathbf g_k+\lambda\,\partial\PenWonek
+    \quad(k=1,\ldots,p_1),
     \qquad
-    \nabla_\varphi\ell+\sum_{k=1}^{p_1}\mu_k\nabla_\varphi s_k=\bzero .
+    \nabla_\varphi\mathcal{L}_n+
+    \sum_{k=1}^{p_1}\mu_k\nabla_\varphi s_k=\bzero .
 \end{equation}
 \end{proposition}
 
-The proof is given in Appendix~\ref{app:proofs}. The two conditions are of a familiar kind.
+For leaky ReLU networks, this differentiability can fail only at
+activation boundaries and at ties in the maximum defining $s_k$; such nondifferentiable points are not covered by the proposition. 
 
-\paragraph{The first condition is a lasso.} Near $\bth$, $s_k$ does not depend on $\Wone$, so that the constraint plays no role in the first layer, and the first condition is that of the lasso with loss $\ell(\cdot,\varphi)$: $g_{kj}=-\lambda\operatorname{sign}W^{(1)}_{kj}$ where $W^{(1)}_{kj}\neq0$, and
+The two conditions have familiar interpretations. The first is the usual lasso optimality condition. Locally around $\bth$, the sensitivity scales $s_k$ do not depend on $\Wone$, so the constraints $s_k=1$ do not enter the first-layer stationarity condition. Hence, for each $k$ and $j$, $g_{kj}=-\lambda\operatorname{sign}(W^{(1)}_{kj})$ if $\Wone_{kj}\neq 0$, whereas a zero coefficient must satisfy
 \begin{equation}\label{eq:zero-test}
-    |g_{kj}|\leq\lambda \quad\text{where } W^{(1)}_{kj}=0 .
+    |g_{kj}|\leq\lambda
+    \qquad\text{if }W^{(1)}_{kj}=0.
 \end{equation}
-This \emph{zero test} decides which variables are selected: variable $j$ is discarded when $|g_{kj}|\leq\lambda$ for every neuron $k$.
+This \emph{zero test} provides the variable-selection rule: variable $j$ is discarded whenever $|g_{kj}|\leq\lambda$ for every first-layer neuron $k$.
 
-\paragraph{The second condition is a Lagrangian with explicit multipliers.} It is the stationarity in $\varphi$ of the Lagrangian
+The second condition concerns the remaining parameters $\varphi$. It is the stationarity condition of the Lagrangian
 \begin{equation}\label{eq:lagrangian}
-    \Lt_\lambda(\bth,\nu)=\ell(\bth)+\lambda\PenWone+\sum_{k=1}^{p_1}\nu_k\big(s_k(\bth)-1\big)
+    \Lt_\lambda(\bth,\nu)
+    =
+    \mathcal{L}_n(f_{\bth}(X); \by)
+    +\lambda\PenWone
+    +\sum_{k=1}^{p_1}\nu_k\big(s_k(\bth)-1\big)
 \end{equation}
-at $\nu_k=\mu_k$. The multipliers need not be solved for: by the rescaling invariance of $\ell$, any local minimizer has $\nu_k=\lambda\PenWonek$ (Appendix~\ref{app:proofs}). Equivalently, the gradient in $\varphi$ of the cost function $J_\lambda$ of~\eqref{eq:optiprob} vanishes. The multiplier term cannot be dropped: with $\nu=\bzero$, the only stationary points have $\Wone=\bzero$, so that no variable could ever be selected.
-
-\begin{remark}[A lasso and a closed-form Lagrangian]\label{rem:blocks}
-Proposition~\ref{prop:kkt} reduces~\eqref{eq:constrained} to two elementary problems: a lasso in $\Wone$, handled by soft-thresholding, and the stationarity in $\varphi$ of a Lagrangian whose multipliers are known in closed form. Nothing has to be solved for or projected: the constraint is restored at no cost by the normalization of Definition~\ref{def:normalized}, and the only non-standard term, $\sum_k\mu_k\nabla_\varphi s_k$, costs one extra backward pass on $p_1$ rows (Section~\ref{sec:computation}). The calibration of $\lambda$ reads the zero test~\eqref{eq:zero-test} at the null model; the algorithm takes one step on each problem.
-\end{remark}
+with respect to $\varphi$, evaluated at
+$\nu_k=\mu_k=\lambda\PenWonek$. These multipliers do not need to be estimated separately: the rescaling invariance of the loss implies that any local minimizer satisfies this identity
+(Appendix~\ref{app:proofs}). The multiplier term is essential here. If it were omitted ($\nu=\bzero$), stationarity would force $\Wone=\bzero$, ruling out any nontrivial variable selection.
 
 \section{Choice of $\lambda$}\label{sec:lambda-calibration}
 \subsection{Calibration under the null}
@@ -315,34 +345,25 @@ We instead build on the null-calibration principle of \citet{PIC-SMS2026}. The c
 
 In a multilayer model, the gradient~\eqref{eq:first-layer-gradient} entering this test depends not only on the statistical association between $X$ and $\by$, through $\br$, but also on the downstream network, through $\ba_{\cdot k}$. The former is determined by the data and can be calibrated under $H_0$; the latter depends on the parametrization of the network. We now show that at the null model the latter disappears altogether, so that a single level $\lambda$ can be calibrated from the data alone.
 
-Consider the null parameter $\bth^0=(\Wone=\mathbf{0},\hat{\boldsymbol{\tau}})\in\Thetaone$, where $\hat{\boldsymbol{\tau}}$ minimizes the loss subject to $\Wone=\mathbf{0}$. Under this constraint the network output is constant across observations, so that $\hat{\boldsymbol{\tau}}$ yields the optimal constant fit under $\mathcal L_n$. Let
-\begin{equation*}
-    \hat{\mathbf r}_0(\by)=\left. \nabla_{\boldsymbol{\eta}}
-    \mathcal L_n(\boldsymbol{\eta};\by)
-    \right|_{\boldsymbol{\eta}=f_{\bth^0}(X)}
-    \in\R^n
-\end{equation*}
-be the gradient of the loss with respect to the outputs at this fit. At $\Wone=\mathbf{0}$, every observation reaches the deeper layers with the same input $\mathbf b^{(1)}$, so that $\ba_{\cdot k}(\bth^0)=a_{0k}\bone$ with $|a_{0k}|=s_k(\bth^0)=1$. By~\eqref{eq:first-layer-gradient}, the null gradient is the rank-one matrix
+Consider the null parameter $\bth^0=(\Wone=\mathbf{0},\hat{\boldsymbol{\tau}})\in\Thetaone$, where $\hat{\boldsymbol{\tau}}$ minimizes the loss subject to $\Wone=\mathbf{0}$. Under this constraint the network output is constant across observations, so that $\hat{\boldsymbol{\tau}}$ yields the optimal constant fit under $\mathcal L_n$. Let $\hat{\mathbf r}_0(\by)$ be the gradient of the loss with respect to the outputs at this fit. At $\Wone=\mathbf{0}$, every observation reaches the deeper layers with the same input $\mathbf b^{(1)}$, so that $\ba_{\cdot k}(\bth^0)=a_{0k}\bone$ with $|a_{0k}|=s_k(\bth^0)=1$. By~\eqref{eq:first-layer-gradient}, the null gradient is the rank-one matrix
 \begin{equation}\label{eq:null-gradient}
     \mathbf g_{0,k}=a_{0k}\,X^\top\hat{\mathbf r}_0(\by),\qquad a_{0k}=\pm1,\qquad k=1,\ldots,p_1 :
 \end{equation}
 the network enters only through a sign, and the evidence against the null only through $X^\top\hat{\mathbf r}_0(\by)$.
 
-We can now read the optimality conditions~\eqref{eq:kkt} at $\bth^0$. The second one holds for every $\lambda$: $\mu_k=0$ since $\Wone=\bzero$, and $\nabla_\varphi\ell(\bth^0)=\bzero$ since $\hat{\boldsymbol\tau}$ minimizes $\ell(\bzero,\cdot)$. By~\eqref{eq:null-gradient}, the first one is the zero test $|X_j^\top\hat{\mathbf r}_0(\by)|\leq\lambda$ for every $j$, the same for all neurons. Hence $\bth^0$ satisfies~\eqref{eq:kkt} if and only if
-\begin{equation}\label{eq:ztf}
-    \lambda\geq\lambda_0(X,\by)=\left\|X^\top\hat{\mathbf r}_0(\by)\right\|_\infty .
-\end{equation}
-The following theorem shows that this first-order condition is also sufficient for local minimality, as soon as it holds strictly.
-
 \begin{theorem}[Zero-thresholding function]\label{thm:ztffunc}
-Assume that no hidden pre-activation vanishes at $\bth^0$ and that $\mathcal L_n(\cdot\,;\by)$ is twice continuously differentiable near $f_{\bth^0}(X)$, and let $\lambda_0(X,\by)$ be given by~\eqref{eq:ztf}.
+Assume that no hidden pre-activation vanishes at $\bth^0$ and that $\mathcal L_n(\cdot\,;\by)$ is twice continuously differentiable near $f_{\bth^0}(X)$. Let
+\begin{equation}\label{eq:ztf}
+    \lambda_0(X,\by)=\left\|X^\top\hat{\mathbf r}_0(\by)\right\|_\infty .
+\end{equation}
 \begin{enumerate}
-\item[(i)] If $\lambda>\lambda_0(X,\by)$, then $\bth^0$ is a local minimizer of~\eqref{eq:constrained}: the level $\lambda$ forces $\Wone=\bzero$.
-\item[(ii)] If $\lambda<\lambda_0(X,\by)$, then $\bth^0$ is not a local minimizer of~\eqref{eq:constrained}.
+\item[(i)] $\bth^0$ satisfies the optimality conditions~\eqref{eq:kkt} if and only if $\lambda\geq\lambda_0(X,\by)$.
+\item[(ii)] If $\lambda>\lambda_0(X,\by)$, then $\bth^0$ is a local minimizer of~\eqref{eq:constrained}: the level $\lambda$ forces $\Wone=\bzero$.
+\item[(iii)] If $\lambda<\lambda_0(X,\by)$, then $\bth^0$ is not a local minimizer of~\eqref{eq:constrained}.
 \end{enumerate}
 \end{theorem}
 
-Part~(ii) is Proposition~\ref{prop:kkt}: the zero test fails for the variable attaining $\lambda_0$. Part~(i), proved in Appendix~\ref{app:proofs}, is the converse: when every zero test holds strictly, no small move of $\bth$, even a joint one in $\varphi$, decreases the objective. Moving a weight $W^{(1)}_{kj}$ away from zero changes the loss at rate $|g_{0,kj}|\leq\lambda_0$ and the penalty at rate $\lambda$, hence the threshold. At $\lambda=\lambda_0$ the two rates balance and the theorem does not conclude; this case has probability zero under the null distributions considered below.
+Part~(i) reads the two conditions at the null model: the second one holds for every $\lambda$, and by~\eqref{eq:null-gradient} the first one is the zero test $|X_j^\top\hat{\mathbf r}_0(\by)|\leq\lambda$ for every variable $j$, the same for all neurons. Part~(iii) follows, by Proposition~\ref{prop:kkt}. Part~(ii) is the converse: when every zero test holds strictly, no small move of $\bth$, even a joint one in $\varphi$, decreases the objective. The proof is given in Appendix~\ref{app:proofs}.
 
 The zero-thresholding function $\lambda_0(X,\by)$ gives the critical regularization level above which $\Wone=\mathbf 0$ is forced for the observed data $(X,\by)$. To turn this data-dependent threshold into a calibrated regularization parameter, we evaluate its distribution in the setting where the null solution is appropriate, namely under $H_0$. This null distribution provides the reference against which the regularization level is calibrated.
 
@@ -401,38 +422,31 @@ The score is the calibrated one, $X_j^\top\br$, reweighted observation by observ
 
 \section{Optimization}\label{sec:optimization}
 
-By Remark~\ref{rem:blocks}, solving~\eqref{eq:constrained} amounts to satisfying the two conditions of~\eqref{eq:kkt}: a lasso in $\Wone$ and the stationarity of the Lagrangian~\eqref{eq:lagrangian} in $\varphi$. Each iteration takes one step on each (Section~\ref{sec:iteration}), and the iterations run along a path of increasing levels ending at $\lamDB$ (Section~\ref{sec:warm}).
+By Proposition~\ref{prop:kkt}, solving~\eqref{eq:constrained} amounts to satisfying two conditions: a lasso in $\Wone$ and the stationarity of the Lagrangian~\eqref{eq:lagrangian} in $\varphi$. Each iteration takes one step on each (Section~\ref{sec:iteration}), and the iterations run along a path of increasing levels ending at $\lamDB$ (Section~\ref{sec:warm}).
 
 \subsection{The Iteration}\label{sec:iteration}
-An iteration normalizes the network, then takes one step on each condition of~\eqref{eq:kkt}. Let $\soft_\tau(x)=\operatorname{sign}(x)\max(|x|-\tau,0)$ denote soft-thresholding.
+The network is first replaced by its normalized version $\Nrm(\bth)\in\Thetaone$ (Definition~\ref{def:normalized}), which changes neither the fit nor the objective (Proposition~\ref{prop:normalization}). The gradients and the moments of Adam rescale with the weights and are rescaled along: divided by $s_k$ (first moment) or $s_k^2$ (second moment) for $W^{(1)}_{k,\cdot}$ and $b^{(1)}_k$, and multiplied likewise for $W^{(2)}_{\cdot,k}$. Without this normalization, the effective step on neuron $k$ would scale like $s_k^2$, and a neuron whose sensitivity shrinks would freeze before its weights reach zero.
 
-\paragraph{1. Normalize.} The network is replaced by $\Nrm(\bth)\in\Thetaone$ (Definition~\ref{def:normalized}), which changes neither the fit nor the objective (Proposition~\ref{prop:normalization}). The gradients and the moments of Adam rescale with the weights and are rescaled along: divided by $s_k$ (first moment) or $s_k^2$ (second moment) for $W^{(1)}_{k,\cdot}$ and $b^{(1)}_k$, multiplied likewise for $W^{(2)}_{\cdot,k}$. Without this step, the effective step on neuron $k$ would scale like $s_k^2$, and a neuron whose sensitivity shrinks would freeze before its weights reach zero.
-
-\paragraph{2. Lasso step on the first layer.} The penalty is handled by a proximal step in the metric of Adam \citep{Adam,AdaProx}:
+The first layer then takes a lasso step. With $\soft_\tau(x)=\operatorname{sign}(x)\max(|x|-\tau,0)$ the soft-thresholding operator, A standard proximal-gradient update would take the form
+\begin{equation*}
+    \Wone_{k, \cdot}\leftarrow \soft_{\delta\lambda}
+    \left(\Wone_{k,\cdot} - \delta\mathbf g_k\right),
+\end{equation*}
+where $\delta$ is the step size. In practice, we replace the common step size $\delta$ by the diagnoal adaptive preconditioning of Adam \citep{Adam,AdaProx}:
 \begin{equation}\label{eq:prox-step}
-    W^{(1)}_{kj}\leftarrow\soft_{D_{kj}\lambda}\big(W^{(1)}_{kj}-D_{kj}\,g_{kj}\big),
+    \Wone_{kj}\leftarrow\soft_{D_{kj}\lambda}\big(W^{(1)}_{kj}-D_{kj}\,g_{kj}\big),
     \qquad
     D_{kj}=\frac{\delta}{\sqrt{\hat v_{kj}}+\varepsilon},
 \end{equation}
-where $\hat v_{kj}$ is the moving average of $g_{kj}^2$. A zero weight stays at zero if and only if $|g_{kj}|\leq\lambda$: the step size cancels, and the test is exactly~\eqref{eq:zero-test}. No momentum is used on $\Wone$, so that the test bears on the current gradient.
+where $\hat v_{kj}$ is the moving average of $g_{kj}^2$. Note that the adaptive preconditioning does not alter the thresholding condition. Indeed, if $\Wone_{kj}=0$, the update step leaves this coefficient at zero if and only if $|g_{kj}|\leq\lambda$: the step size cancels, and the test is exactly the zero test~\eqref{eq:zero-test}. Hence, the coordinate-wise adaptive step sizes affect the magnitude of the optimization updates but cancel from the zero-thresholding test. Moreover, because no first-moment momentum is used for the penalized first-layer weights, the quantity entering this condition is the current loss gradient. 
 
-\paragraph{3. Lagrangian step on the other parameters.} The parameters $\varphi$ take an Adam step along
+Finally, the other parameters $\varphi$ take an Adam step along the gradient in $\varphi$ of the Lagrangian~\eqref{eq:lagrangian} at its closed-form multipliers $\nu_k=\mu_k$,
 \begin{equation}\label{eq:grad-phi}
-    \mathbf d_\varphi=\nabla_\varphi\ell+\sum_{k=1}^{p_1}\mu_k\nabla_\varphi s_k,
-    \qquad \mu_k=\lambda\PenWonek ,
+    \mathbf d_\varphi=\nabla_\varphi\mathcal{L}_n+\sum_{k=1}^{p_1}\mu_k\nabla_\varphi s_k,
+    \qquad \mu_k=\lambda\PenWonek .
 \end{equation}
-the gradient in $\varphi$ of the Lagrangian~\eqref{eq:lagrangian} at its closed-form multipliers $\nu_k=\mu_k$.
 
 The fixed points of the iteration are exactly the points satisfying~\eqref{eq:kkt}, and at the null model the iteration applies the calibrated test.
-
-\begin{proposition}[Fixed points]\label{prop:properties}
-\begin{enumerate}
-\item[(a)] A network $\bth\in\Thetaone$ where no hidden pre-activation vanishes, with zero first moment on $\varphi$, is left unchanged by an iteration if and only if it satisfies~\eqref{eq:kkt}.
-\item[(b)] Under the assumptions of Theorem~\ref{thm:ztffunc}, the null network $\bth^0$, with zero first moment on $\varphi$, is left unchanged if and only if $\lambda\geq\lambda_0(X,\by)$.
-\end{enumerate}
-\end{proposition}
-
-By~(b), the algorithm applies exactly the zero-thresholding test for which $\lamDB$ is calibrated. As usual for neural networks trained with Adam, no convergence result is claimed \citep{Reddi2018}.
 
 \subsection{A Reversed Warm Path}\label{sec:warm}
 While the ultimate goal is to solve \eqref{eq:constrained} at $\lambda=\lamDB$, the calibrated level $\lamDB$ should not in general be imposed directly at initialization. The reason is that $\lamDB$ is calibrated from the first-order behavior of the network at the null model. A relevant variable may nevertheless have little or no marginal association with the response when its effect is purely nonlinear.
@@ -443,39 +457,34 @@ We therefore take the conservative approach of solving for a sequence of $\lambd
     0<\lambda^{(1)}<\lambda^{(2)}<\ldots<\lambda^{(M)}=\lamDB.
 \end{equation*}
 Taking as initial parameter values the solution corresponding to the previous $\lambda^{(i)}$ leads to a sequence of sparser approximating solutions until solving for $\lamDB$ at the last step. Along this path, the sensitivity profiles
-$\ba_{\cdot k}(\bth)$ evolve with the learned representation. Hence, once nonlinear structure has been learned, the adaptive first-layer score $X_j^\top \left(\ba_{\cdot k}(\bth)\odot \mathbf r(\bth)\right)$ can reflect information that is absent from the marginal score at the null model. Increasing $\lambda$ then progressively removes first-layer connections that are no longer supported by these learned, observation-specific scores.
-
-Each value of $\lambda$ defines a phase, which runs the iteration until the objective of~\eqref{eq:constrained} has stabilized. The whole procedure is summarized in Algorithm~\ref{alg:fit}.
-
-\begin{algorithm}[t]
-\caption{Fit along the warm path}\label{alg:fit}
-\begin{algorithmic}[1]
-\REQUIRE $X$ (centred, unit second moment), $\by$, level $\alpha$, number of phases $M$
-\STATE $\lamDB\gets(1-\alpha)$-quantile of $\|X^\top\hat{\mathbf r}_0(\mathbf Y_0)\|_\infty$ over Monte Carlo draws $\mathbf Y_0$ under $H_0$
-\FOR{$\lambda=\lambda^{(1)}<\cdots<\lambda^{(M)}=\lamDB$ (warm start)}
-  \REPEAT
-    \STATE $\bth\gets\Nrm(\bth)$, rescaling the gradients and moments along
-    \STATE compute $\mathbf g_k$ by~\eqref{eq:first-layer-gradient} and $\mathbf d_\varphi$ by~\eqref{eq:grad-phi}
-    \STATE $\Wone\gets$ lasso step~\eqref{eq:prox-step}; \quad $\varphi\gets\operatorname{Adam}(\varphi,\mathbf d_\varphi)$
-  \UNTIL{$\ell+\lambda\PenWone$ has stabilized}
-\ENDFOR
-\RETURN $\hat S=\{j:\hat W^{(1)}_{\cdot j}\neq\bzero\}$
-\end{algorithmic}
-\end{algorithm}
+$\ba_{\cdot k}(\bth)$ evolve with the learned representation. Hence, once nonlinear structure has been learned, the adaptive first-layer score $X_j^\top \left(\ba_{\cdot k}(\bth)\odot \mathbf r(\bth)\right)$ can reflect information that is absent from the marginal score at the null model. Increasing $\lambda$ then progressively removes first-layer connections that are no longer supported by these learned, observation-specific scores. Each value of $\lambda$ defines a phase, which runs the iteration until the objective of~\eqref{eq:constrained} has stabilized. 
 
 \subsection{Implementation}\label{sec:computation}
-Every quantity of an iteration comes from standard backpropagation.
+Every quantity of an iteration comes from standard backpropagation. Indeed, since the output $\eta_i$ depends only on observation $\bx_i$, the chain rule gives $\partial \ell/\partial \mathbf h_i^{(1)}=r_i\,\ba_i$. Thus, whenever $r_i\neq0$, the sensitivity vector $\ba_i$ is directly recovered from the usual backward pass of the loss. If $r_i=0$, it can
+instead be evaluated from~\eqref{eq:obs-sensitivity}. Once the
+vectors $\ba_i$ are available, we compute $s_k$ and note $i_k^*=\arg\max_i |a_{ik}|$ the observation where $s_k$ is attained. 
 
-\paragraph{Sensitivities.} Each $\eta_i$ depends on $\bx_i$ only, so $\partial\ell/\partial\mathbf h^{(1)}_i=r_i\,\ba_i$: the sensitivities come with the backward pass of the loss, or, where $r_i=0$, from~\eqref{eq:obs-sensitivity} at the cost of one forward pass of the deeper layers.
+The multiplier term of~\eqref{eq:grad-phi} is obtained in the same way. Away from activation boundaries and ties, the activation pattern is locally fixed and $\nabla_\varphi s_k=
+\operatorname{sign}(a_{i_k^*k})\nabla_\varphi a_{i_k^*k}$. For a fixed observation $i$, the downstream network, viewed locally as
+a function of its first-layer activation, is the linear map $\mathbf u\mapsto\ba_i^\top\mathbf u$. Therefore, at observation $i_k^*$, feeding the artificial input
+\begin{equation*}
+    \mathbf u_k=\mu_k\operatorname{sign}(a_{i_k^*k})\,\mathbf e_k
+\end{equation*}
+into the downstream network produces
+\begin{equation*}
+    \ba_{i_k^*}^{\top}\mathbf u_k = \mu_k|a_{i_k^*k}|
+    = \mu_k s_k.
+\end{equation*}
+Summing these outputs over $k$ and differentiating with respect to $\varphi$ consequently gives
+\begin{equation*}
+    \nabla_\varphi
+    \left(\sum_{k=1}^{p_1}\mu_k s_k\right)
+    =
+    \sum_{k=1}^{p_1}\mu_k\nabla_\varphi s_k,
+\end{equation*}
+which is precisely the multiplier term in~\eqref{eq:grad-phi}. Hence, the individual gradients $\nabla_\varphi s_k$ never need to be formed explicitly.
 
-\paragraph{The extra gradient term.} With the activation patterns frozen, the network at observation $i$ is the linear map $\mathbf u\mapsto\ba_i^\top\mathbf u$. Feeding $\mathbf u=\mu_k\operatorname{sign}(a_{i^*_kk})\,\mathbf e_k$ at the observation $i^*_k$ where $s_k$ is attained gives the output $\sum_k\mu_ks_k$, whose gradient is the multiplier term of~\eqref{eq:grad-phi}. It costs a forward and a backward pass of the deeper layers on $p_1$ rows, so an iteration costs about one epoch of a standard network.
-
-
-
-\subsection{Optional Refitting on the Selected Model}
-After completion of the regularization path, the selected support is
-determined from the nonzero columns of $\hat W^{(1)}$. If desired, the network can subsequently be reduced to this selected set of input features, together with the removal of any hidden neurons that have become inactive. The dimensions of $\hat W^{(2)}$ are adjusted accordingly. An optional final training phase can then be performed on this reduced architecture without regularization so as to reduce any estimation bias introduced by the penalized fit.
-
+The computational overhead is therefore limited. The main forward and backward pass is performed on the $n$ training observations and provides the loss gradient together with the sensitivities needed to identify the maximizing indices $i_k^*$. The multiplier term then requires one additional forward and backward pass through the downstream layers only, using at most $p_1$ rows, one for each first-layer neuron. Its cost is therefore of order $p_1$ downstream evaluations, compared with $n$ full-network evaluations for the main pass. In the usual regime $p_1\ll n$, this additional computation is small relative to a standard full-data training iteration.
 \section{Experiments}\label{sct:exp}
 
 \appendix
