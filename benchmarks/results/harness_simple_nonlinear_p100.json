@@ -1,0 +1,1304 @@
+[
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 0,
+  "time": 3.672453811000082,
+  "epochs": [
+   270,
+   190,
+   180,
+   110,
+   320
+  ],
+  "unconverged": 0,
+  "selected": [
+   33,
+   52,
+   75
+  ],
+  "support": [
+   33,
+   52,
+   75
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 1,
+  "time": 4.683062803999974,
+  "epochs": [
+   370,
+   230,
+   200,
+   120,
+   590
+  ],
+  "unconverged": 0,
+  "selected": [
+   31,
+   52,
+   56
+  ],
+  "support": [
+   31,
+   52,
+   56
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 2,
+  "time": 3.42625828000007,
+  "epochs": [
+   280,
+   150,
+   230,
+   290,
+   250
+  ],
+  "unconverged": 0,
+  "selected": [
+   28,
+   57,
+   96
+  ],
+  "support": [
+   28,
+   57,
+   96
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 3,
+  "time": 2.897061792000045,
+  "epochs": [
+   160,
+   150,
+   160,
+   100,
+   200
+  ],
+  "unconverged": 0,
+  "selected": [
+   19,
+   23,
+   79
+  ],
+  "support": [
+   19,
+   23,
+   79
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 4,
+  "time": 1.9941250650000484,
+  "epochs": [
+   290,
+   220,
+   160,
+   100,
+   200
+  ],
+  "unconverged": 0,
+  "selected": [
+   4,
+   28,
+   64,
+   79
+  ],
+  "support": [
+   4,
+   28,
+   79
+  ],
+  "tp": 3,
+  "fp": 1,
+  "exact": false
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 5,
+  "time": 2.0375667299999805,
+  "epochs": [
+   530,
+   200,
+   130,
+   90,
+   140
+  ],
+  "unconverged": 0,
+  "selected": [
+   5,
+   43,
+   45
+  ],
+  "support": [
+   5,
+   43,
+   45
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 6,
+  "time": 3.6197136130000445,
+  "epochs": [
+   570,
+   210,
+   210,
+   110,
+   620
+  ],
+  "unconverged": 0,
+  "selected": [
+   2,
+   20,
+   65
+  ],
+  "support": [
+   2,
+   20,
+   65
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 7,
+  "time": 2.097481249999987,
+  "epochs": [
+   170,
+   210,
+   340,
+   110,
+   280
+  ],
+  "unconverged": 0,
+  "selected": [
+   13,
+   19,
+   65
+  ],
+  "support": [
+   13,
+   19,
+   65
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 8,
+  "time": 1.8987189840000838,
+  "epochs": [
+   170,
+   150,
+   170,
+   250,
+   220
+  ],
+  "unconverged": 0,
+  "selected": [
+   11,
+   32,
+   45
+  ],
+  "support": [
+   11,
+   32,
+   45
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 9,
+  "time": 1.5712348569999222,
+  "epochs": [
+   130,
+   230,
+   140,
+   120,
+   170
+  ],
+  "unconverged": 0,
+  "selected": [
+   39,
+   50
+  ],
+  "support": [
+   19,
+   39,
+   50
+  ],
+  "tp": 2,
+  "fp": 0,
+  "exact": false
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 10,
+  "time": 2.1821675929999174,
+  "epochs": [
+   230,
+   170,
+   100,
+   140,
+   520
+  ],
+  "unconverged": 0,
+  "selected": [
+   8,
+   48,
+   98
+  ],
+  "support": [
+   8,
+   48,
+   98
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 11,
+  "time": 2.94854210699998,
+  "epochs": [
+   120,
+   270,
+   230,
+   300,
+   460
+  ],
+  "unconverged": 0,
+  "selected": [
+   62,
+   64,
+   73
+  ],
+  "support": [
+   62,
+   64,
+   73
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 12,
+  "time": 2.3920710129999634,
+  "epochs": [
+   270,
+   260,
+   120,
+   140,
+   350
+  ],
+  "unconverged": 0,
+  "selected": [
+   64,
+   71,
+   93
+  ],
+  "support": [
+   64,
+   71,
+   93
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 13,
+  "time": 2.5815768310000067,
+  "epochs": [
+   130,
+   250,
+   180,
+   220,
+   450
+  ],
+  "unconverged": 0,
+  "selected": [
+   21,
+   57,
+   64
+  ],
+  "support": [
+   21,
+   57,
+   64
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 14,
+  "time": 3.3665034709999873,
+  "epochs": [
+   490,
+   390,
+   280,
+   270,
+   210
+  ],
+  "unconverged": 0,
+  "selected": [
+   3,
+   19,
+   90
+  ],
+  "support": [
+   3,
+   19,
+   90
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 15,
+  "time": 3.01152905999993,
+  "epochs": [
+   150,
+   280,
+   190,
+   260,
+   440
+  ],
+  "unconverged": 0,
+  "selected": [
+   6,
+   39,
+   44
+  ],
+  "support": [
+   6,
+   39,
+   44
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 16,
+  "time": 1.9996707420000348,
+  "epochs": [
+   200,
+   170,
+   200,
+   130,
+   190
+  ],
+  "unconverged": 0,
+  "selected": [
+   32,
+   51,
+   73
+  ],
+  "support": [
+   32,
+   51,
+   73
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 17,
+  "time": 2.533991260999983,
+  "epochs": [
+   420,
+   220,
+   130,
+   230,
+   400
+  ],
+  "unconverged": 0,
+  "selected": [
+   43,
+   74,
+   80
+  ],
+  "support": [
+   43,
+   74,
+   80
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 18,
+  "time": 3.1782780119999643,
+  "epochs": [
+   150,
+   180,
+   240,
+   330,
+   450
+  ],
+  "unconverged": 0,
+  "selected": [
+   5,
+   44,
+   76
+  ],
+  "support": [
+   5,
+   44,
+   76
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 19,
+  "time": 2.352186051999979,
+  "epochs": [
+   240,
+   170,
+   160,
+   180,
+   250
+  ],
+  "unconverged": 0,
+  "selected": [
+   13,
+   34,
+   76
+  ],
+  "support": [
+   13,
+   34,
+   76
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 20,
+  "time": 2.5744719829999667,
+  "epochs": [
+   110,
+   180,
+   210,
+   280,
+   320
+  ],
+  "unconverged": 0,
+  "selected": [
+   12,
+   58,
+   86
+  ],
+  "support": [
+   12,
+   58,
+   86
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 21,
+  "time": 1.9363960189999716,
+  "epochs": [
+   270,
+   240,
+   110,
+   120,
+   170
+  ],
+  "unconverged": 0,
+  "selected": [
+   4,
+   54,
+   71
+  ],
+  "support": [
+   4,
+   54,
+   71
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 22,
+  "time": 4.11439254000004,
+  "epochs": [
+   420,
+   290,
+   360,
+   220,
+   770
+  ],
+  "unconverged": 0,
+  "selected": [
+   21,
+   51,
+   66
+  ],
+  "support": [
+   21,
+   51,
+   66
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 23,
+  "time": 2.2182322559999648,
+  "epochs": [
+   220,
+   180,
+   190,
+   90,
+   440
+  ],
+  "unconverged": 0,
+  "selected": [
+   16,
+   37,
+   44
+  ],
+  "support": [
+   16,
+   37,
+   44
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 24,
+  "time": 2.540882588000045,
+  "epochs": [
+   390,
+   200,
+   210,
+   140,
+   340
+  ],
+  "unconverged": 0,
+  "selected": [
+   39,
+   41,
+   71
+  ],
+  "support": [
+   39,
+   41,
+   71
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 25,
+  "time": 2.1550240340000073,
+  "epochs": [
+   280,
+   320,
+   150,
+   120,
+   180
+  ],
+  "unconverged": 0,
+  "selected": [
+   27,
+   80,
+   83
+  ],
+  "support": [
+   27,
+   80,
+   83
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 26,
+  "time": 2.24957421900001,
+  "epochs": [
+   200,
+   260,
+   170,
+   130,
+   450
+  ],
+  "unconverged": 0,
+  "selected": [
+   25,
+   70,
+   82
+  ],
+  "support": [
+   25,
+   70,
+   82
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 27,
+  "time": 1.9782729830000108,
+  "epochs": [
+   160,
+   250,
+   150,
+   140,
+   360
+  ],
+  "unconverged": 0,
+  "selected": [
+   2,
+   22,
+   42
+  ],
+  "support": [
+   2,
+   22,
+   42
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 28,
+  "time": 3.155898650999916,
+  "epochs": [
+   450,
+   180,
+   340,
+   240,
+   380
+  ],
+  "unconverged": 0,
+  "selected": [
+   1,
+   8,
+   32
+  ],
+  "support": [
+   1,
+   8,
+   32
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 29,
+  "time": 3.12303074700003,
+  "epochs": [
+   520,
+   220,
+   230,
+   120,
+   580
+  ],
+  "unconverged": 0,
+  "selected": [
+   29,
+   66,
+   87
+  ],
+  "support": [
+   29,
+   66,
+   87
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 30,
+  "time": 2.0923241000000417,
+  "epochs": [
+   340,
+   250,
+   110,
+   260,
+   140
+  ],
+  "unconverged": 0,
+  "selected": [
+   66,
+   82,
+   88
+  ],
+  "support": [
+   66,
+   82,
+   88
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 31,
+  "time": 2.3551565309999205,
+  "epochs": [
+   320,
+   270,
+   210,
+   250,
+   180
+  ],
+  "unconverged": 0,
+  "selected": [
+   20,
+   65,
+   81
+  ],
+  "support": [
+   20,
+   65,
+   81
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 32,
+  "time": 1.9916031000000203,
+  "epochs": [
+   210,
+   310,
+   200,
+   110,
+   150
+  ],
+  "unconverged": 0,
+  "selected": [
+   10,
+   50,
+   68,
+   98
+  ],
+  "support": [
+   10,
+   50,
+   98
+  ],
+  "tp": 3,
+  "fp": 1,
+  "exact": false
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 33,
+  "time": 1.967928516000029,
+  "epochs": [
+   120,
+   180,
+   180,
+   120,
+   300
+  ],
+  "unconverged": 0,
+  "selected": [
+   0,
+   2,
+   62
+  ],
+  "support": [
+   0,
+   2,
+   62
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 34,
+  "time": 2.763367111999969,
+  "epochs": [
+   150,
+   290,
+   280,
+   270,
+   460
+  ],
+  "unconverged": 0,
+  "selected": [
+   59,
+   69,
+   88
+  ],
+  "support": [
+   59,
+   69,
+   88
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 35,
+  "time": 2.94470747999992,
+  "epochs": [
+   120,
+   200,
+   170,
+   360,
+   600
+  ],
+  "unconverged": 0,
+  "selected": [
+   5,
+   42,
+   54
+  ],
+  "support": [
+   5,
+   42,
+   54
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 36,
+  "time": 2.8875989540000546,
+  "epochs": [
+   400,
+   180,
+   270,
+   120,
+   350
+  ],
+  "unconverged": 0,
+  "selected": [
+   14,
+   53,
+   75
+  ],
+  "support": [
+   14,
+   53,
+   75
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 37,
+  "time": 2.5305140010000287,
+  "epochs": [
+   130,
+   290,
+   230,
+   290,
+   270
+  ],
+  "unconverged": 0,
+  "selected": [
+   12,
+   70,
+   95
+  ],
+  "support": [
+   12,
+   70,
+   95
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 38,
+  "time": 2.1223742590000256,
+  "epochs": [
+   240,
+   250,
+   150,
+   90,
+   190
+  ],
+  "unconverged": 0,
+  "selected": [
+   3,
+   29,
+   88
+  ],
+  "support": [
+   3,
+   29,
+   88
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 39,
+  "time": 3.2282256180000104,
+  "epochs": [
+   340,
+   210,
+   220,
+   160,
+   550
+  ],
+  "unconverged": 0,
+  "selected": [
+   30,
+   45,
+   78
+  ],
+  "support": [
+   30,
+   45,
+   78
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 40,
+  "time": 2.391866069999992,
+  "epochs": [
+   200,
+   260,
+   140,
+   190,
+   380
+  ],
+  "unconverged": 0,
+  "selected": [
+   23,
+   53,
+   94
+  ],
+  "support": [
+   23,
+   53,
+   94
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 41,
+  "time": 2.4751697189999504,
+  "epochs": [
+   170,
+   230,
+   220,
+   130,
+   500
+  ],
+  "unconverged": 0,
+  "selected": [
+   0,
+   1,
+   43
+  ],
+  "support": [
+   0,
+   1,
+   43
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 42,
+  "time": 3.121860925000078,
+  "epochs": [
+   360,
+   220,
+   190,
+   330,
+   330
+  ],
+  "unconverged": 0,
+  "selected": [
+   7,
+   18,
+   53
+  ],
+  "support": [
+   7,
+   18,
+   53
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 43,
+  "time": 1.9775630209999235,
+  "epochs": [
+   170,
+   210,
+   230,
+   140,
+   200
+  ],
+  "unconverged": 0,
+  "selected": [
+   4,
+   11,
+   16
+  ],
+  "support": [
+   4,
+   11,
+   16
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 44,
+  "time": 2.16551718300002,
+  "epochs": [
+   230,
+   300,
+   160,
+   110,
+   200
+  ],
+  "unconverged": 0,
+  "selected": [
+   33,
+   64,
+   80
+  ],
+  "support": [
+   33,
+   64,
+   80
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 45,
+  "time": 2.436655242000029,
+  "epochs": [
+   250,
+   220,
+   190,
+   130,
+   500
+  ],
+  "unconverged": 0,
+  "selected": [
+   3,
+   73,
+   80
+  ],
+  "support": [
+   3,
+   73,
+   80
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 46,
+  "time": 2.26575483900001,
+  "epochs": [
+   140,
+   300,
+   120,
+   150,
+   520
+  ],
+  "unconverged": 0,
+  "selected": [
+   36,
+   60,
+   93
+  ],
+  "support": [
+   36,
+   60,
+   93
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 47,
+  "time": 2.6051168470000903,
+  "epochs": [
+   480,
+   120,
+   230,
+   170,
+   410
+  ],
+  "unconverged": 0,
+  "selected": [
+   14,
+   23,
+   41,
+   55
+  ],
+  "support": [
+   14,
+   23,
+   41
+  ],
+  "tp": 3,
+  "fp": 1,
+  "exact": false
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 48,
+  "time": 2.730015871999967,
+  "epochs": [
+   350,
+   150,
+   340,
+   310,
+   250
+  ],
+  "unconverged": 0,
+  "selected": [
+   8,
+   76,
+   97
+  ],
+  "support": [
+   8,
+   76,
+   97
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ },
+ {
+  "scenario": "nonlinear_p100",
+  "seed": 49,
+  "time": 2.774679041000013,
+  "epochs": [
+   300,
+   280,
+   290,
+   170,
+   380
+  ],
+  "unconverged": 0,
+  "selected": [
+   7,
+   57,
+   90
+  ],
+  "support": [
+   7,
+   57,
+   90
+  ],
+  "tp": 3,
+  "fp": 0,
+  "exact": true
+ }
+]
