@@ -34,7 +34,34 @@ Fichier de suivi. En cas de reprise : relire ce fichier et `git log`, puis repre
 
 ## Tâche en cours
 
-Aucune : mission terminée (voir `RAPPORT.md`).
+Aucune. Dernière demande (simplification du code) : faite, voir ci-dessous.
+
+## Simplification du code (demande utilisateur, après la mission)
+
+- Ensemble actif et tests KKT supprimés : chaque phase travaille sur tout W⁽¹⁾,
+  rien n'est élagué entre les phases. `_violations`, `_run_phase`, `_descend`,
+  `_fit_phase`, `_MAX_KKT_ROUNDS`, `_check_every` supprimés ; `tests/test_active_set.py`
+  supprimé.
+- `base.py` regroupé (977 → 699 lignes) : `_forward` (prédicteur + pentes),
+  `_jacobian`, `_multiplier`, `_gradients`, `_normalize`, `_optimizer`, et la boucle
+  dans `fit_phase`. Itération : gradients au point courant, normalisation (gradients
+  et moments transportés : exactement les gradients au réseau normalisé, J étant
+  invariant), pas lasso proximal sur W⁽¹⁾, pas Adam sur φ.
+- Objectif enregistré : J_λ au point courant ; nouveau test : identique pour une
+  copie rescalée. Sur un exemple non linéaire, s_k saute parfois (jusqu'au facteur
+  1/m = 100) quand une activation bascule, mais sans saut visible de J (neurones
+  concernés à W⁽¹⁾ ≈ 0) ; les variations de J (~0,7 %/époque) sont l'oscillation d'Adam.
+
+Harnais (1 thread) — original (49f7e67) / ensemble actif (dfbb1c0) / simplifié :
+
+| scénario | exact | temps (s) |
+|---|---|---|
+| linear_p100 (50) | 48 / 50 / 50 | 2,39 / 1,97 / 2,33 |
+| nonlinear_p100 (50) | 46 / 46 / 46 | 2,67 / 2,53 / 2,61 |
+| linear_p1000 (30) | 22 / 25 / 23 | 6,16 / 4,48 / 5,13 |
+| linear_p5000 (20) | 10 / 14 / 9 | 13,2 / 10,3 / 13,05 |
+
+FP moyens simplifié : 0 ; 0,06 ; 1,70 ; 18,55. Phases non convergées : 0 ; 0 ; 7 ; 12.
 
 ## Décisions
 
