@@ -27,6 +27,8 @@
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\soft}{\mathcal{S}}
 \newcommand{\Lt}{\tilde{\mathcal{L}}}
+\newcommand{\bc}{\mathbf{c}}
+\newcommand{\Grp}{\mathcal{G}}
 
 \title{Variable Selection using Artificial Neural Networks}
 
@@ -45,7 +47,7 @@ nonlinear and highly parameterized structure, in particular because
 first-layer weights cannot be interpreted independently of the downstream
 network. Yet, selecting a relevant subset of input variables can improve
 interpretability while reducing model size. We introduce an adaptive
-first-layer regularization framework for multilayer perceptrons relying on a single regularization parameter. Each first-layer neuron is weighted by its downstream sensitivity, yielding a scale-invariant penalty and normalizing the corresponding first-layer gradients. To preserve variables whose relevance emerges only through nonlinear interactions, regularization is progressively introduced after an unpenalized learning phase. The resulting sparse networks discard irrelevant input variables and their associated parameters, thereby reducing both input dimensionality and model complexity. We develop the framework for Gaussian regression, binary classification, and Cox proportional-hazards models, and investigate its variable-selection and
+first-layer regularization framework for multilayer perceptrons relying on a single regularization parameter. Each first-layer neuron is weighted by its downstream sensitivity, yielding a scale-invariant penalty and normalizing the corresponding first-layer gradients. The penalized problem is solved on the representatives of the rescaling symmetry where every sensitivity equals one, where it becomes a lasso on the first layer, by a proximal adaptive gradient method whose zero-thresholding test is the calibrated one. To preserve variables whose relevance emerges only through nonlinear interactions, the regularization level is raised progressively along a warm-started path. The resulting sparse networks discard irrelevant input variables and their associated parameters, thereby reducing both input dimensionality and model complexity. We develop the framework for Gaussian regression, binary classification, and Cox proportional-hazards models, and investigate its variable-selection and
 sparsification properties through numerical experiments.
 \end{abstract}
 
@@ -71,24 +73,35 @@ This paper addresses this difficulty by exploiting the structure of the input-la
 \begin{itemize}
 \item A zero-thresholding condition for a penalized multilayer perceptron
       (Theorem~\ref{thm:ztffunc}) and an exact rank-one factorization of the
-      null gradient (Lemma~\ref{lem:rankone}) separating the statistical
+      null gradient (proof of Theorem~\ref{thm:ztffunc}) separating the statistical
       evidence from the network amplification.
 \item A regularization rule, $\lambda^{(t)}=\lamDB\, s(\bth^{(t)})$, in which
       only the first factor is calibrated. It is exactly invariant under the
-      rescaling group of the network (Proposition~\ref{prop:invariance}),
+      rescaling group of the network (Proposition~\ref{prop:penalty-scale-invariance}),
       recovers the fixed-architecture condition at the null
       (Theorem~\ref{thm:consistency}) uniformly over the unpenalized
       parameters, and is the largest admissible such rule
       (Proposition~\ref{prop:admissible}).
+      % TODO(Max): thm:consistency and prop:admissible do not exist in the text;
+      % state and prove them, or drop the two claims.
 \item The consequence that the calibrated threshold does not depend on the
       architecture (Corollary~\ref{cor:arch}): one calibration serves every
       depth and width, and collapses to the linear-model threshold.
+      % TODO(Max): cor:arch does not exist in the text; it would follow from
+      % Theorem~\ref{thm:ztffunc}, where lambda_0 = ||X^T r_0||_inf.
 \item Pivotal losses and closed-form null gradients for Gaussian regression,
-      binary classification and the Cox model (Table~\ref{tab:losses}),
+      binary classification and the Cox model (Table~\ref{tab:pivotal-ztf}),
       reducing the calibration to a single matrix product per Monte Carlo draw.
-\item An optimization scheme (Section~\ref{sec:optim}) combining a reversed
-      warm path in $\lambda$ with proximal updates at the adaptive level, and
-      an explicit account of what it does and does not guarantee.
+\item Equivalent formulations of the penalized problem
+      (Proposition~\ref{prop:formulations}): the penalty is a lasso on the
+      first layer on the representatives where every sensitivity equals one,
+      and the selected set is read off rescaling-invariant coefficients.
+\item An optimization scheme (Section~\ref{sec:optimization}) that fixes this
+      gauge at every step and takes proximal adaptive steps on the resulting
+      lasso, along a warm path in $\lambda$. Its fixed points are the
+      first-order points of the problem, and at the null it performs exactly
+      the calibrated zero-thresholding test
+      (Proposition~\ref{prop:properties}); we state what it does not guarantee.
 \end{itemize}
 
 % ==========================================================================
@@ -105,8 +118,11 @@ modifying the architecture to accommodate them. The resulting guarantee is diffe
 \paragraph{Tuning without cross-validation.} Choosing $\lambda$ from the null rather than from held-out risk goes back to the universal threshold of \citet{Dono94b} and, for the lasso, to the theoretical choice of \citet{BRT2009}. The quantile universal threshold \citep{QUT2017} replaces the asymptotic rate by a finite-sample quantile of the zero-thresholding statistic, and the pivotal information criterion \citep{PIC-SMS2026} makes that quantile computable by removing the nuisance parameters from the statistic. This paper is the extension of that programme to a nonlinear, non-identified model.
 
 \paragraph{Rescaling invariance.} That a positively homogeneous network can move mass between layers at no cost, so that a norm read off one layer means nothing on its own, is the phenomenon behind path-normalized measures of capacity
-\citep{neyshabur2015norm} and behind Path-SGD \citep{neyshabur2015path}. Those works build an invariant norm out of the products of weights along input-output
-paths. We take a different route, dictated by what the calibration needs: rather than replacing the penalty by an invariant one, we keep the $\ell_1$ penalty on $\Wone$ and rescale the \emph{level}, by exactly the factor that appears in the null gradient. The resulting cost is invariant and the threshold retains its meaning. 
+\citep{neyshabur2015norm}. It affects optimization as well: gradient descent is not invariant under these rescalings, and Path-SGD \citep{neyshabur2015path} replaces it by an approximate steepest descent in the geometry of the path norm, which is invariant. We take a different route, dictated by what the calibration needs: rather than replacing the penalty by an invariant one, we keep the $\ell_1$ penalty on $\Wone$ and rescale the \emph{level}, by exactly the factor that appears in the null gradient. The resulting cost is invariant and the threshold retains its meaning. Rather than changing the metric, the optimization then fixes a gauge.
+
+Optimizing over the orbits of a symmetry through representatives, with algorithms that must not depend on the representative, is the framework of optimization on quotient manifolds \citep{Absil2008}. Several methods interleave descent steps with free moves along the orbits of the rescalings. Equi-normalization \citep{ENorm} rescales every neuron, between two steps of stochastic gradient descent and without changing the function, towards the unique representative that minimizes the $\ell_2$ norm of the weights, computed by iterations inspired by the Sinkhorn--Knopp algorithm. Symmetry teleportation \citep{Teleportation} moves along a level set of the loss, by a group action that leaves it invariant, to a point where the gradient is steeper, and gives a necessary condition for this to accelerate convergence. Our retraction is such a move at every step, with an explicit target: the representative is dictated by the penalty rather than by a norm, and it is computed neuron by neuron in closed form. Weight normalization \citep{WeightNorm} fixes the scale by construction, writing each weight vector as $g\,\mathbf v/\|\mathbf v\|$; no such reparameterization is available here (Section~\ref{sec:gauge-fixed}). Without any gauge, gradient flow conserves, neuron by neuron, the difference between the squared norms of the incoming and of the outgoing weights \citep{DuHuLee2018}, which is what lets the scales drift.
+
+The closest algorithm to ours is PathProx \citep{PathProx}. For ReLU networks, weight decay is equivalent to a penalty $\sum_k\|\mathbf w_k\|_2\|\mathbf v_k\|_2$ on the input and output weights of every neuron, and PathProx normalizes the input weights of each neuron, a gauge, and takes proximal steps on the output weights, a group soft-thresholding. Its gauge factor $\|\mathbf w_k\|_2$ has a radial gradient, along the orbit, which the normalization absorbs. Ours, $s_k$, depends on the data and on the deeper layers, and its gradient must be kept (Section~\ref{sec:structure}): the present method is a PathProx whose gauge factor depends on the data. Its first-layer step is an instance of the proximal adaptive methods of \citet{AdaProx}, whose proximal operator is taken in the metric of the preconditioner, and of variable-metric forward--backward splitting \citep{CombettesVu2014}.
 
 % ==========================================================================
 \section{Sparse Learning with Neural Networks}
@@ -193,15 +209,31 @@ is invariant under any positive neuron-wise reparameterization of the form \eqre
 
 The role of the sensitivity scale extends beyond scale invariance. By matching the sensitivity factor appearing in the first-layer gradient, it removes neuron-specific downstream amplification from the regularization threshold, thereby enabling the calibration of a single regularization parameter $\lambda$, as developed in Section~\ref{sec:lambda-calibration}.
 
+\paragraph{The rescaling group.} Write $\Grp=(0,\infty)^{p_1}$ and, for $\bc\in\Grp$, let $G_{\bc}$ apply \eqref{eq:positive-rescaling} to every first-layer neuron $k$ with $c=c_k$. These rescalings compose, $G_{\bc}G_{\bc'}=G_{\bc\odot\bc'}$. They multiply $\mathbf h^{(1)}_i$ entrywise by $\bc$ and leave every deeper pre-activation unchanged, so that they change no activation pattern, and
+\begin{equation}\label{eq:group-action}
+    f_{G_{\bc}\bth}=f_{\bth},\qquad s_k(G_{\bc}\bth)=\frac{s_k(\bth)}{c_k},\qquad k=1,\ldots,p_1 ;
+\end{equation}
+rescaling neuron $k$ leaves every $s_j$, $j\neq k$, unchanged. Let $\Theta_+=\{\bth:s_k(\bth)>0,\ k=1,\ldots,p_1\}$.
+
+\begin{lemma}[Canonical representative]\label{lem:canonical}
+For every $\bth\in\Theta_+$, the orbit $\{G_{\bc}\bth:\bc\in\Grp\}$ meets the set $\Sigma=\{\bth\in\Theta_+:s(\bth)=\bone\}$ at exactly one point, $G_{s(\bth)}\bth$.
+\end{lemma}
+\begin{proof}
+By \eqref{eq:group-action}, $s(G_{\bc}\bth)=\bone$ if and only if $c_k=s_k(\bth)$ for every $k$.
+\end{proof}
+
 \subsection{The Learning Problem}\label{sec:learning}
 Given data $(X,\by)$, we consider the training problem
 \begin{equation}\label{eq:optiprob}
     \min_{\bth \in \R^\gamma} J_\lambda(\bth),
     \qquad
-    J_\lambda(\bth)=\mathcal{L}_n\left(f_{\bth}(X);\by\right)+
-    \lamDB\sum_{k=1}^{p_1}s_k(\bth)\PenWonek,
+    J_\lambda(\bth)=\ell(\bth)+
+    \lambda\sum_{k=1}^{p_1}s_k(\bth)\PenWonek,
+    \qquad
+    \ell(\bth)=\mathcal{L}_n\left(f_{\bth}(X);\by\right),
+    \tag{P}
 \end{equation}
-where $\mathcal{L}_n(\bet;\by)$ is a data-dependent goodness-of-fit measure of the vector of outputs, and $\lamDB\geq0$ is the regularization parameter controlling the strength of the adaptive first-layer penalty developed in Section \ref{sec:lambda-calibration}. The full expression $J_\lambda$ is referred to as the cost function. Throughout this work, we consider three statistical learning settings: regression, binary classification, and survival analysis under the Cox proportional hazards model. In each case, the goodness-of-fit term $\mathcal{L}_n$ is chosen with a specific normalization that will play a central role in the calibration of $\lambda$. We consider the same three losses as \citet{PIC-SMS2026}.
+where $\mathcal{L}_n(\bet;\by)$ is a data-dependent goodness-of-fit measure of the vector of outputs, and $\lambda\geq0$ is the regularization parameter controlling the strength of the adaptive first-layer penalty, set to the level $\lamDB$ developed in Section \ref{sec:lambda-calibration}. The full expression $J_\lambda$ is referred to as the cost function. Throughout this work, we consider three statistical learning settings: regression, binary classification, and survival analysis under the Cox proportional hazards model. In each case, the goodness-of-fit term $\mathcal{L}_n$ is chosen with a specific normalization that will play a central role in the calibration of $\lambda$. We consider the same three losses as \citet{PIC-SMS2026}.
 
 For regression, with $\by\in\R^n$, we use the square-root loss
 \begin{equation*}
@@ -229,6 +261,39 @@ These particular forms and normalizations are not merely conventional
 choices. They are selected so that the score of the loss at the null model is a pivotal quantity, free of any nuisance parameters. This property is what ultimately allows our choice of regularization level $\lamDB$ developed in Section~\ref{sec:lambda-calibration}.
 
 The numerical solution of~\eqref{eq:optiprob} is considered separately in Section~\ref{sec:optimization}. In particular, we discuss why the final regularization level should be approached along a regularization path rather than imposed directly at initialization, and describe the optimization scheme used to solve the successive penalized problems.
+
+\subsection{Equivalent Formulations}\label{sec:formulations}
+By Proposition~\ref{prop:penalty-scale-invariance}, $J_\lambda\circ G_{\bc}=J_\lambda$ for every $\bc\in\Grp$, and Lemma~\ref{lem:canonical} selects one point on every orbit. Problem~\eqref{eq:optiprob} can therefore be written in several equivalent ways.
+
+\begin{itemize}
+\item \emph{Constrained form, or fixed gauge.} On the representatives $\Sigma$, the penalty is a lasso on the first layer:
+\begin{equation}\label{eq:constrained}
+    \min_{\bth}\ \ell(\bth)+\lambda\PenWone
+    \quad\text{subject to}\quad s_k(\bth)=1,\quad k=1,\ldots,p_1 .
+    \tag{C}
+\end{equation}
+\item \emph{Quotient form.} $J_\lambda$ is constant on the orbits, $J_\lambda=\bar J_\lambda\circ\pi$ with $\pi:\Theta_+\to\Theta_+/\Grp$ the projection onto the orbits, and~\eqref{eq:optiprob} on $\Theta_+$ is the minimization of $\bar J_\lambda$ over the orbits. By Lemma~\ref{lem:canonical}, $\Sigma$ meets every orbit once: it is a global section, a gauge, which identifies $\Theta_+/\Grp$ with $\Sigma$. Since $s$ is not continuous, this identification is one of sets, not of manifolds.
+\item \emph{Invariant coefficients.} Let $B_{k,\cdot}=s_k(\bth)\,W^{(1)}_{k,\cdot}$. Then $B$ is invariant under $\Grp$, $J_\lambda=\ell+\lambda\|B\|_1$, and $B=\Wone$ on $\Sigma$. The selected set $\hat S=\{j:B_{\cdot j}\neq\bzero\}$ is therefore a property of the orbit. $B$ is not a free parameterization, since $s$ depends on the data and on the activation patterns: it is a reading of the problem, not a change of variables.
+\end{itemize}
+
+Let $\varphi$ denote the parameters other than $\Wone$, namely every bias, including $\mathbf b^{(1)}$, and the weights $W^{(2)},\ldots,W^{(L)}$. Write $\mathbf g_k=\nabla_{W^{(1)}_{k,\cdot}}\ell$. Since $J_\lambda$ is only piecewise smooth, first-order conditions are stated at regular points. We call $\bth$ \emph{regular} if no hidden pre-activation vanishes at any observation and if, for every $k$, the observations attaining $s_k(\bth)$ share their activation patterns. Near a regular point the patterns are constant, $\ell$ is differentiable, and $s_k$ is differentiable, independent of $\Wone$ and of the biases, and depends on $W^{(2)}$ only through its column $W^{(2)}_{\cdot k}$. A regular $\bth$ is a \emph{first-order point} of~\eqref{eq:optiprob} if
+\begin{equation}\label{eq:kkt}
+    \bzero\in\mathbf g_k(\bth)+\lambda s_k(\bth)\,\partial\PenWonek\quad(k=1,\ldots,p_1),
+    \qquad
+    \nabla_\varphi J_\lambda(\bth)=\bzero,
+\end{equation}
+and a first-order point of~\eqref{eq:constrained} if $\bth\in\Sigma$, the first condition of~\eqref{eq:kkt} holds, and $\nabla_\varphi\ell(\bth)+\sum_k\nu_k\nabla_\varphi s_k(\bth)=\bzero$ for some multipliers $\nu\in\R^{p_1}$.
+
+\begin{proposition}[Equivalent formulations]\label{prop:formulations}
+For every $\lambda\geq0$:
+\begin{enumerate}
+\item[(i)] Problems~\eqref{eq:optiprob}, restricted to $\Theta_+$, and~\eqref{eq:constrained} have the same infimum, and $\bth\mapsto G_{s(\bth)}\bth$ maps the global minimizers of the first onto those of the second.
+\item[(ii)] A regular $\bth\in\Theta_+$ is a first-order point of~\eqref{eq:optiprob} if and only if $G_{s(\bth)}\bth$ is a first-order point of~\eqref{eq:constrained}, whose multipliers are then $\nu_k=\lambda\PenWonek$.
+\item[(iii)] $B$ is invariant under $\Grp$, $J_\lambda=\ell+\lambda\|B\|_1$, and $B=\Wone$ on $\Sigma$.
+\end{enumerate}
+\end{proposition}
+
+The proof is given in Appendix~\ref{app:proofs}. At regular points of $\Sigma$, the gradients $\nabla_\varphi s_k$ are linearly independent, so that the first-order conditions of~\eqref{eq:constrained} are necessary for its local minimizers. Problem~\eqref{eq:constrained} is the one the optimization of Section~\ref{sec:optimization} works on, and the one where the calibrated level has the meaning of a lasso threshold (Section~\ref{sec:lambda-away-null}).
 
 \section{Choice of $\lambda$}\label{sec:lambda-calibration}
 \subsection{Calibration under the null}
@@ -387,8 +452,10 @@ Consequently, for each first-layer connection $(k,j)$, the corresponding thresho
 Hence, the adaptive penalty removes the overall magnitude $s_k(\bth)$ of the downstream sensitivity from the thresholding condition, while retaining its observation-specific structure through
 $\widetilde{\ba}_{\cdot k}(\bth)$. The regularization parameter $\lambda$ therefore acts on a normalized first-layer score and can be shared across all first-layer neurons.
 
+The normalized score $X_j^\top(\tilde{\ba}_{\cdot k}\odot\br)=g_{kj}/s_k$ is invariant under $\Grp$: it is the gradient of $\ell$ with respect to the invariant coefficient $B_{kj}$ of Section~\ref{sec:formulations}, at fixed $s$. In the constrained form~\eqref{eq:constrained}, where $s_k=1$ and $\tilde{\ba}_{\cdot k}=\ba_{\cdot k}$, the condition reads $|g_{kj}(\bth)|\leq\lambda$: the zero-thresholding condition of a lasso at level $\lambda$, which the calibration of Section~\ref{sec:lambda-calibration} sets at the null.
 
-\section{Optimization}\label{sct:opti}
+
+\section{Optimization}\label{sec:optimization}
 
 \subsection{A Reversed Warm Path}
 While the ultimate goal is to solve \eqref{eq:optiprob}, the calibrated level $\lamDB$ should not in general be imposed directly at initialization. The reason is that $\lamDB$ is calibrated from the first-order behavior of the network at the null model. A relevant variable may nevertheless have little or no marginal association with the response when its effect is purely nonlinear.
@@ -401,42 +468,163 @@ We therefore take the conservative approach of solving for a sequence of $\lambd
 Taking as initial parameter values the solution corresponding to the previous $\lambda^{(i)}$ leads to a sequence of sparser approximating solutions until solving for $\lamDB$ at the last step. Along this path, the normalized sensitivities
 $\widetilde{\ba}_{\cdot k}(\bth)$ evolve with the learned representation. Hence, once nonlinear structure has been learned, the adaptive first-layer score $X_j^\top \left(\tilde{\ba}_{\cdot k}(\bth)\odot \mathbf r(\bth)\right)$ can reflect information that is absent from the marginal score at the null model. Increasing $\lambda$ then progressively removes first-layer connections that are no longer supported by these learned, observation-specific scores.
 
-\subsection{Proximal Updates at an Adaptive Level}
-Within a phase $m=1, \ldots, M$, the regularization level $\lambda^{(m)}$ is fixed, whereas the sensitivity scales $s_k(\bth^t)=\|\ba_{\cdot k}(\bth^t)\|_\infty$ are recomputed at every optimization iteration. These quantities are treated as fixed during the corresponding parameter update. This results in a sequence of locally weighted $\ell_1$ problems, with penalty $\lambda^{(m)}s_k(\bth^t)$ applied to each coefficient in the $k$th row of $\Wone$.
+\subsection{Structure of the Problem}\label{sec:structure}
+The penalty of~\eqref{eq:optiprob} acts on $\Wone$ through its $\ell_1$ norm, and on $\varphi$ through the scales $s_k$ only. Near a regular point, $s_k$ is linear in the column $W^{(2)}_{\cdot k}$ and, the activation patterns being frozen, positively homogeneous of degree one in every $W^{(l)}$, $l\geq2$. $J_\lambda$ is not continuous, however: when an activation flips at the observation attaining $s_k$, the scale $s_k$ jumps, by up to a factor $1/m$. Differentiating $J_\lambda\circ G_{\bc}=J_\lambda$ at $\bc=\bone$ gives the following identities.
 
-A standard proximal-gradient update would take the form
+\begin{lemma}[Euler identities]\label{lem:euler}
+At every regular $\bth$ and for every first-layer neuron $k$,
+\begin{align}
+    \langle W^{(1)}_{k,\cdot},\mathbf g_k\rangle
+    + b^{(1)}_k\,\partial_{b^{(1)}_k}\ell
+    - \langle W^{(2)}_{\cdot k},\nabla_{W^{(2)}_{\cdot k}}\ell\rangle &= 0,
+    \label{eq:euler-loss}\\
+    \langle W^{(2)}_{\cdot k},\nabla_{W^{(2)}_{\cdot k}}s_k\rangle
+    = \langle W^{(l)},\nabla_{W^{(l)}}s_k\rangle &= s_k,
+    \qquad l=2,\ldots,L.
+    \label{eq:euler-s}
+\end{align}
+\end{lemma}
+
+Since $J_\lambda$ depends on $\varphi$ through the scales, the chain rule gives
+\begin{equation}\label{eq:grad-phi}
+    \nabla_\varphi J_\lambda=\nabla_\varphi\ell+\sum_{k=1}^{p_1}\mu_k\nabla_\varphi s_k,
+    \qquad \mu_k=\lambda\PenWonek,
+\end{equation}
+whereas $\Wone$ receives $\nabla_{\Wone}\ell$ alone, its penalty being handled by a proximal step (Section~\ref{sec:prox-step}). The second term of~\eqref{eq:grad-phi} cannot be dropped.
+
+\begin{proposition}[No sparse fixed point without the multiplier]\label{prop:no-fixed-point}
+Let $\lambda>0$, and let $\bth$ be regular with $s_k(\bth)>0$ for every $k$. If $\nabla_\varphi\ell(\bth)=\bzero$ and the first condition of~\eqref{eq:kkt} holds, then $\Wone=\bzero$.
+\end{proposition}
+
+A scheme that moves $\varphi$ along $\nabla_\varphi\ell$ alone therefore has no fixed point that selects a variable. For a single neuron, $\eta=v\,\sigma(wx)$ with $x=1$, the loss $\frac12(\eta-2)^2$ and $\lambda=1$, problem~\eqref{eq:optiprob} reads $\min_u\frac12(u-2)^2+|u|$ in $u=vw>0$, whose minimizer is $u^*=1$; gradient descent with the retraction of Section~\ref{sec:gauge-fixed} but without the second term of~\eqref{eq:grad-phi} settles instead at the root of $(u-2)(1+u^2)=-1$, $u\approx1.75$.
+
+The multiplier term has a direct reading in~\eqref{eq:constrained}. The Lagrangian $\ell+\lambda\PenWone+\sum_k\nu_k(s_k-1)$ is stationary in $\varphi$ when $\nabla_\varphi\ell+\sum_k\nu_k\nabla_\varphi s_k=\bzero$, and the identities of Lemma~\ref{lem:euler} force $\nu_k=\mu_k$ (Proposition~\ref{prop:formulations}). The term $\mu_k\nabla_\varphi s_k$ is thus the normal of the constraint $s_k=1$, weighted by its Lagrange multiplier, which is known in closed form: no linear system has to be solved.
+
+\subsection{Gauge-Fixed Proximal Gradient}\label{sec:gauge-fixed}
+Each iteration first moves the iterate along its orbit to its canonical representative, then takes a proximal adaptive step (Section~\ref{sec:prox-step}):
+\begin{equation}\label{eq:iteration}
+    \bar\bth^{t}=G_{s(\bth^{t})}\bth^{t},
+    \qquad
+    \bth^{t+1}=\operatorname{prox-Adam}\big(\bar\bth^{t},\nabla J_\lambda(\bar\bth^{t})\big).
+\end{equation}
+By Lemma~\ref{lem:canonical}, $s(\bar\bth^t)=\bone$: the retraction fixes the gauge, and every step is taken on~\eqref{eq:constrained}. The retraction leaves $J_\lambda$ unchanged, and three reasons make it necessary.
+
+\paragraph{Effective step.} A proximal step of size $\delta$ on $\Wone$, $W^{(1)}_{kj}\leftarrow\soft_{\delta\lambda s_k}(W^{(1)}_{kj}-\delta g_{kj})$ with $\soft_\tau(x)=\operatorname{sign}(x)\max(|x|-\tau,0)$, reads on the invariant coefficients
 \begin{equation*}
-    W^{(1,t+1)}_{k,\cdot}= \operatorname{Soft}_{\delta_t\lambda^{(m)}s_k(\bth^t)}
-    \left( W^{(1,t)}_{k,\cdot} - \delta_t\mathbf g_k(\bth^t)\right),
+    B_{kj}\leftarrow\soft_{\delta s_k^2\lambda}\big(B_{kj}-\delta s_k^2\,\hat g_{kj}\big),
+    \qquad \hat g_{kj}=X_j^\top(\tilde{\ba}_{\cdot k}\odot\br),
 \end{equation*}
-where $\delta_t$ is the step size and $\mathbf g_k(\bth^t)$ denotes the gradient of the loss with respect to the $k$th row of the first-layer weights.
+since $s\,\soft_\tau(x)=\soft_{s\tau}(sx)$ for $s>0$ and $g_{kj}=s_k\hat g_{kj}$. The threshold on the normalized score stays $\lambda$, but the effective step is $\delta s_k^2$: a neuron whose scale becomes small freezes before its row reaches zero, and the neuron is left hanging, with variables falsely selected. On $\Sigma$, the step is the same for every neuron, and $B=\Wone$.
 
+\paragraph{Drift of the scales.} Gradient flow conserves, neuron by neuron, the difference between the squared norms of the incoming and of the outgoing weights \citep[Theorem~2.1]{DuHuLee2018}. The argument only uses the invariance of the objective under the rescalings, and applies to $J_\lambda$ wherever it is differentiable. As the lasso shrinks $W^{(1)}_{k,\cdot}$, the column $W^{(2)}_{\cdot k}$ shrinks with it, and so does $s_k$, which is linear in that column. The retraction breaks this conservation law on purpose.
 
+\paragraph{Equivariance.} Euclidean gradients are not covariant under $\Grp$: $\mathbf g_k(G_{\bc}\bth)=\mathbf g_k(\bth)/c_k$. Without the retraction, the trajectory would depend on the arbitrary scale of the starting point. With it, and with the optimizer state transported as below, the iterates depend on the orbit only (Proposition~\ref{prop:properties}), as an algorithm on a quotient should \citep{Absil2008}.
 
-In practice, we replace the common step size $\delta_t$ by the diagonal adaptive preconditioning of Adam \citep{Adam}, within the proximal framework of \citet{AdaProx}. This yields a coordinate-wise proximal update. Let
+\paragraph{Transport of the optimizer state.} Differentiating $J_\lambda\circ G_{\bc}=J_\lambda$ shows that gradients are covariant: the gradient of a weight multiplied by $c$ is divided by $c$, and that of a weight divided by $c$ is multiplied by $c$. The retraction, with $c_k=s_k(\bth^t)$, applies the same rule to the moments of Adam: for $W^{(1)}_{k,\cdot}$ and $b^{(1)}_k$, the gradient and the first moment are divided by $c_k$ and the second moment by $c_k^2$; for $W^{(2)}_{\cdot k}$, they are multiplied by $c_k$ and $c_k^2$. The transport is exact, $J_\lambda$ being invariant, and necessary: since $s_k$ jumps, moments left at the old scale would meet gradients at the new one in an oversized step. A neuron with $s_k=0$ is left as it is.
+
+Like equi-normalization \citep{ENorm} and symmetry teleportation \citep{Teleportation}, the iteration interleaves descent steps with free moves along the orbits; here the target is dictated by the penalty, and computed neuron by neuron in closed form. Weight normalization \citep{WeightNorm} would fix the gauge by construction. Here, by Lemma~\ref{lem:canonical}, the only rescaling of a parameter $\mathbf u$ onto $\Sigma$ is $G_{s(\mathbf u)}$, and since $J_\lambda(G_{s(\mathbf u)}\mathbf u)=J_\lambda(\mathbf u)$, the reparameterization $\bth=G_{s(\mathbf u)}\mathbf u$ gives~\eqref{eq:optiprob} back in $\mathbf u$: the gauge has to be imposed by retraction. PathProx \citep{PathProx} also fixes a gauge, but the gradient of its gauge factor $\|\mathbf w_k\|_2$ is radial, along the orbit, and the normalization absorbs it. Here $\nabla_{W^{(2)}_{\cdot k}}s_k$ is not collinear to $W^{(2)}_{\cdot k}$, and $s_k$ depends on the deeper layers shared by all neurons: the multiplier term of~\eqref{eq:grad-phi} changes the fitted function, and must be kept.
+
+\subsection{Adaptive Proximal Step}\label{sec:prox-step}
+The common step size of the proximal gradient step is replaced by the diagonal preconditioning of Adam \citep{Adam}, within the proximal framework of \citet{AdaProx}. On $\Wone$, the step has no first moment, $\beta_1=0$:
+\begin{equation}\label{eq:prox-step}
+    W^{(1)}_{kj}\leftarrow\soft_{D_{kj}\lambda s_k}\big(W^{(1)}_{kj}-D_{kj}\,g_{kj}\big),
+    \qquad
+    D_{kj}=\frac{\delta}{\sqrt{\hat v_{kj}}+\varepsilon}>0,
+\end{equation}
+where $\hat v_{kj}$ is the bias-corrected exponential moving average of $g_{kj}^2$, and $s_k=1$ after the retraction. This is the proximal operator of $\lambda s_k|\cdot|$ in the diagonal metric $D^{-1}$, a variable-metric forward--backward step \citep{CombettesVu2014}. Three properties follow.
+\begin{enumerate}
+\item \emph{Thresholding test.} A zero coordinate stays at zero if and only if $|g_{kj}|\leq\lambda s_k$: $D_{kj}$ cancels.
+\item \emph{Fixed points.} $\Wone$ is left unchanged if and only if the first condition of~\eqref{eq:kkt} holds: $g_{kj}=-\lambda s_k\operatorname{sign}W^{(1)}_{kj}$ where $W^{(1)}_{kj}\neq0$, and $|g_{kj}|\leq\lambda s_k$ elsewhere. $D$ only sets the speed.
+\item \emph{No momentum.} With a first moment, the test would bear on an average of past gradients instead of $\mathbf g(\bth^t)$, and inertia would carry across zero a coordinate the proximal operator has just set to zero.
+\end{enumerate}
+The other parameters take standard Adam steps, $\beta_1=0.9$, along $\nabla_\varphi J_\lambda$ in~\eqref{eq:grad-phi}. A fixed point of $\varphi$ and of its first moment $m$ satisfies $m=\nabla_\varphi J_\lambda$ and $m=\bzero$, hence $\nabla_\varphi J_\lambda=\bzero$: momentum is harmless there, no thresholding acting on $\varphi$. A phase stops once $|J_\lambda(\bth^{t-50})-J_\lambda(\bth^t)|\leq\mathrm{tol}\cdot J_\lambda(\bth^t)$: $J_\lambda$ is the objective actually decreased, and the retraction leaves it unchanged.
+
+\subsection{Properties}\label{sec:properties}
+\begin{proposition}[Properties of the iteration]\label{prop:properties}
+Consider the iteration~\eqref{eq:iteration}, acting on the parameters and on the moments of Adam.
+\begin{enumerate}
+\item[(a)] \emph{Exactness.} The retraction changes neither $f_{\bth}$, nor the activation patterns, nor $J_\lambda$.
+\item[(b)] \emph{Equivariance.} Started from $G_{\bc}\bth$, with its moments transported as in Section~\ref{sec:gauge-fixed}, the iteration produces the same iterates as started from $\bth$, from the first retraction on: the iterates depend on the orbit of $\bth$ only.
+\item[(c)] \emph{Fixed points.} A regular $\bth\in\Sigma$ with a zero first moment on $\varphi$ is a fixed point if and only if it is a first-order point of~\eqref{eq:optiprob}, or equivalently of~\eqref{eq:constrained}.
+\item[(d)] \emph{Calibration preserved.} Let the null parameter $\bth^0=(\Wone=\bzero,\hat{\boldsymbol{\tau}})$ be regular and on $\Sigma$, with a zero first moment on $\varphi$. Then $\bth^0$ is a fixed point if and only if $\lambda\geq\lambda_0(X,\by)$.
+\end{enumerate}
+\end{proposition}
+
+Property~(d) is the condition of Theorem~\ref{thm:ztffunc}: along the fit, the iteration performs exactly the zero-thresholding test that $\lamDB$ is calibrated for, and the calibrated level keeps its meaning. The proofs of this section are given in Appendix~\ref{app:proofs}.
+
+\paragraph{Limitations.} $J_\lambda$ is not continuous. The convergence guarantees of ProxGen \citep{AdaProx}, which assume a loss with a Lipschitz gradient, and those of \citet{Davis2020}, for locally Lipschitz functions, do not apply directly, and Adam itself may fail to converge \citep{Reddi2018}. What is guaranteed is the nature of the fixed points, (c) and (d); we claim no convergence theorem. Moreover, (c) concerns regular points: where a hidden pre-activation vanishes at some observation, or where observations with different activation patterns tie for $s_k$, $J_\lambda$ is not differentiable, and stationarity can only be understood in a generalized sense.
+
+\subsection{Computation}\label{sec:computation}
+\paragraph{Sensitivities.} Each $\eta_i$ depends on $\bx_i$ only, whatever the loss, the Cox partial likelihood included. Hence $G_i=\partial\ell/\partial\mathbf h^{(1)}_i=r_i\,\ba_i$ with $r_i=\partial\ell/\partial\eta_i$, and the backward pass of the loss yields $a_{ik}=G_{ik}/r_i$ wherever $r_i\neq0$. The rows where $r_i=0$, saturated probabilities for instance, must be recomputed from the activation patterns by~\eqref{eq:obs-sensitivity}; doing so for every row costs one forward pass of the layers above the first, with neither division nor branch. The scales $s_k$ and the observations $i^*_k=\arg\max_i|a_{ik}|$ attaining them follow.
+
+\paragraph{Multiplier term in one pass.} With the activation patterns frozen and the biases removed, the network at observation $i$ is the linear map $\mathbf u\mapsto\ba_i^\top\mathbf u$ of the first-layer pre-activation. Feeding $\mathbf u^{(k)}=\mu_k\operatorname{sign}(a_{i^*_k k})\,\mathbf e_k$ on a virtual row copied from observation $i^*_k$, for $k=1,\ldots,p_1$, gives
 \begin{equation*}
-    v_{kj}^{(t)}= \beta v_{kj}^{(t-1)}+(1-\beta) \left(g_{kj}^{(t)}\right)^2,\qquad \beta\in[0, 1)
+    \sum_{k=1}^{p_1}\ba_{i^*_k}^\top\mathbf u^{(k)}=\sum_{k=1}^{p_1}\mu_k s_k,
 \end{equation*}
-denote the exponential moving average of the squared gradient, and define the corresponding effective step size $D_{kj}^{(t)}=\frac{\delta_t}{\sqrt{v_{kj}^{(t)}}+\varepsilon}$.
-The first-layer update is then
-\begin{equation*}
-    W^{(1,t+1)}_{kj}= \operatorname{Soft}_{D_{kj}^{(t)}\lambda^{(m)}s_k(\bth^t)}
-    \left(W^{(1,t)}_{kj}-D_{kj}^{(t)}g_{kj}(\bth^t)\right).
-\end{equation*}
+whose gradient with respect to $W^{(2)},\ldots,W^{(L)}$ is the multiplier term of~\eqref{eq:grad-phi}. It costs one forward and one backward pass of the deeper layers on $p_1$ virtual rows.
 
-Note that the adaptive preconditioning does not alter the thresholding condition. Indeed, if $W^{(1,t)}_{kj}=0$, the update step leaves this coefficient at zero if and only if 
-\begin{equation*}
-    D_{kj}^{(t)}|g_{kj}(\bth^t)|\leq D_{kj}^{(t)}\lambda^{(m)}s_k(\bth^t).
-\end{equation*}
-Since $D_{kj}^{(t)}>0$, this is equivalent to $|g_{kj}(\bth^t)|\leq\lambda^{(m)}s_k(\bth^t)$. Hence, the coordinate-wise adaptive step sizes affect the magnitude of the optimization updates but cancel from the zero-thresholding test. Moreover, because no first-moment momentum is used for the penalized first-layer weights, the quantity entering this condition is the current loss gradient. The proximal Adam update therefore preserves the zero-threshold condition underlying Theorem~\ref{thm:ztffunc}.
+\paragraph{Cost.} One iteration costs about one epoch of a standard multilayer perceptron. The first layer, with $O(np\,p_1)$ operations, dominates when $p$ is large.
 
-The remaining network parameters are unpenalized and are therefore updated without the proximal step. For these parameters, we retain both the first- and second-moment estimates, so that their update reduces to standard Adam \citep{Adam}. The optimization thus uses two parameter groups: the penalized first-layer weights are updated by proximal Adam without first-moment momentum, whereas all remaining parameters are updated by standard Adam with momentum.
+\paragraph{Active set.} A column of $\Wone$ that is zero at the end of a phase is dropped from the next one, which computes with the other columns only. A dropped column $j$ would stay at zero under a proximal step on the whole of $\Wone$ if and only if $\max_k|X_j^\top G_{\cdot k}|/s_k\leq\lambda$, the zero-thresholding test, at the cost of one product with the dropped columns. The test is run when every phase starts, at its level, and when the last phase ends, at $\lamDB$: the columns that fail are taken back and the phase is run again. The fixed points of the reduced problem that pass the test are exactly those of the full problem; in particular, when every column has been dropped, the final test at $\lamDB$ is the test of Theorem~\ref{thm:ztffunc}. This is the active-set strategy of glmnet \citep{glmnet}, whose optimality checks also complete the strong rules of \citet{StrongRules}.
+
+Algorithm~\ref{alg:fit} summarizes the procedure.
+
+\begin{algorithm}[t]
+\caption{Gauge-fixed proximal fit along the warm path}\label{alg:fit}
+\begin{algorithmic}[1]
+\REQUIRE $X$ (centred, unit second moment), $\by$, loss $\mathcal L_n$, level $\alpha$, number of phases $M$, ratio $\rho$, step size $\delta$, tolerances $\mathrm{tol}_m$
+\STATE $\lamDB\gets(1-\alpha)$-quantile of $\|X^\top\hat{\mathbf r}_0(\mathbf Y_0)\|_\infty$ over Monte Carlo draws $\mathbf Y_0$ under $H_0$
+\STATE $\lambda^{(1)}<\cdots<\lambda^{(M)}=\lamDB$, geometric from $\rho\,\lamDB$
+\FOR{$m=1,\ldots,M$, warm-started}
+  \STATE $\mathcal A\gets$ non-zero columns of $\Wone$, and the zero ones that fail the zero-thresholding test at $\lambda^{(m)}$
+  \REPEAT
+    \STATE forward and backward pass of $\mathcal L_n$ on the columns of $\mathcal A$: $\nabla\ell(\bth)$, $G=\partial\ell/\partial\mathbf h^{(1)}$, $\br=\partial\ell/\partial\bet$
+    \STATE $a_{ik}\gets G_{ik}/r_i$, recomputed where $r_i=0$; $s_k\gets\max_i|a_{ik}|$; $i^*_k\gets\arg\max_i|a_{ik}|$
+    \STATE $\nabla_\varphi J_\lambda\gets\nabla_\varphi\ell+\sum_k\mu_k\nabla_\varphi s_k$, $\mu_k=\lambda^{(m)}\PenWonek$ \COMMENT{linearized pass}
+    \STATE $\bth\gets G_{s}\bth$; transport the gradients and the moments of Adam \COMMENT{now $s=\bone$}
+    \STATE $\Wone\gets\soft_{D\lambda^{(m)}}\big(\Wone-D\,\nabla_{\Wone}\ell\big)$, $D=\delta/(\sqrt{\hat v}+\varepsilon)$, $\beta_1=0$
+    \STATE $\varphi\gets\operatorname{Adam}(\varphi,\nabla_\varphi J_\lambda)$
+  \UNTIL{$|J_\lambda(\bth^{t-50})-J_\lambda(\bth^t)|\leq\mathrm{tol}_m\,J_\lambda(\bth^t)$}
+  \IF{$m=M$ and some dropped columns fail the test at $\lamDB$}
+    \STATE add them to $\mathcal A$ and repeat the phase
+  \ENDIF
+\ENDFOR
+\RETURN $\hat\bth$ and $\hat S=\{j:\hat W^{(1)}_{\cdot j}\neq\bzero\}$
+\end{algorithmic}
+\end{algorithm}
 
 \subsection{Optional Refitting on the Selected Model}
 After completion of the regularization path, the selected support is
 determined from the nonzero columns of $\hat W^{(1)}$. If desired, the network can subsequently be reduced to this selected set of input features, together with the removal of any hidden neurons that have become inactive. The dimensions of $\hat W^{(2)}$ are adjusted accordingly. An optional final training phase can then be performed on this reduced architecture without regularization so as to reduce any estimation bias introduced by the penalized fit.
 
 \section{Experiments}\label{sct:exp}
+
+\appendix
+\section{Proofs}\label{app:proofs}
+
+Throughout, $\bth$ is regular. Near $\bth$, the activation patterns are constant, so that $a_{ik}$ is a multilinear function of $(W^{(2)}_{\cdot k},W^{(3)},\ldots,W^{(L)})$, linear in each argument, and does not depend on $\Wone$ nor on the biases. The observations attaining $s_k$ share their patterns, hence the same function $a_{ik}$, so that near $\bth$, $s_k=|a_{i^*_k k}|$, which is differentiable when $s_k>0$.
+
+\paragraph{Proof of Lemma~\ref{lem:euler}.}
+For every $\bc\in\Grp$, $\ell(G_{\bc}\bth)=\ell(\bth)$ by~\eqref{eq:group-action}. The map $\bc\mapsto G_{\bc}\bth$ is smooth, and its derivative in $c_k$ at $\bc=\bone$ is $W^{(1)}_{k,\cdot}$ in the coordinates of $W^{(1)}_{k,\cdot}$, $b^{(1)}_k$ in that of $b^{(1)}_k$, $-W^{(2)}_{\cdot k}$ in those of $W^{(2)}_{\cdot k}$, and zero elsewhere. Differentiating at $\bc=\bone$, where $\ell$ is differentiable, gives~\eqref{eq:euler-loss}. Near $\bth$, $s_k=|a_{i^*_k k}|$ is positively homogeneous of degree one in $W^{(2)}_{\cdot k}$ and in every $W^{(l)}$, $l\geq3$, and it depends on $W^{(2)}$ through $W^{(2)}_{\cdot k}$ only: \eqref{eq:euler-s} is Euler's identity for homogeneous functions.
+
+\paragraph{Proof of Proposition~\ref{prop:no-fixed-point}.}
+By~\eqref{eq:euler-loss} and $\nabla_\varphi\ell(\bth)=\bzero$, $\langle W^{(1)}_{k,\cdot},\mathbf g_k\rangle=0$. The first condition of~\eqref{eq:kkt} gives $g_{kj}=-\lambda s_k\operatorname{sign}W^{(1)}_{kj}$ wherever $W^{(1)}_{kj}\neq0$, hence $\langle W^{(1)}_{k,\cdot},\mathbf g_k\rangle=-\lambda s_k\PenWonek$. Since $\lambda s_k>0$, $W^{(1)}_{k,\cdot}=\bzero$ for every $k$.
+
+\paragraph{Proof of Proposition~\ref{prop:formulations}.}
+(i) For $\bth\in\Theta_+$, let $\bar\bth=G_{s(\bth)}\bth\in\Sigma$. By invariance, and since $s(\bar\bth)=\bone$, $J_\lambda(\bth)=J_\lambda(\bar\bth)=\ell(\bar\bth)+\lambda\|\bar W^{(1)}\|_1$, the objective of~\eqref{eq:constrained} at $\bar\bth$. Every feasible point of~\eqref{eq:constrained} lies in $\Sigma\subset\Theta_+$ and is its own representative. Both problems therefore have the same infimum, and $\bth$ minimizes~\eqref{eq:optiprob} over $\Theta_+$ if and only if $\bar\bth$ minimizes~\eqref{eq:constrained}.
+
+(ii) The conditions~\eqref{eq:kkt} hold at $\bth$ if and only if they hold at $G_{\bc}\bth$, for every $\bc\in\Grp$. Indeed, $G_{\bc}\bth$ is regular, $\mathbf g_k(G_{\bc}\bth)=\mathbf g_k(\bth)/c_k$ and $s_k(G_{\bc}\bth)=s_k(\bth)/c_k$, while $\partial\|\cdot\|_1$ is unchanged by a positive rescaling of its argument; and differentiating $J_\lambda(G_{\bc}\bth)=J_\lambda(\bth)$ shows that $\nabla_\varphi J_\lambda(G_{\bc}\bth)$ is obtained from $\nabla_\varphi J_\lambda(\bth)$ by multiplying its entries by positive factors. It is therefore enough to consider $\bth\in\Sigma$, where the first condition of~\eqref{eq:kkt} is common to both problems. If $\nabla_\varphi J_\lambda(\bth)=\bzero$, then, by~\eqref{eq:grad-phi}, the stationarity condition of~\eqref{eq:constrained} holds with $\nu_k=\mu_k$. Conversely, let $\nabla_\varphi\ell+\sum_j\nu_j\nabla_\varphi s_j=\bzero$, and take its inner product with the vector $\mathbf t_k$ equal to $b^{(1)}_k$ in the coordinate of $b^{(1)}_k$, to $-W^{(2)}_{\cdot k}$ in those of $W^{(2)}_{\cdot k}$, and to zero elsewhere. By~\eqref{eq:euler-loss}, $\langle\mathbf t_k,\nabla_\varphi\ell\rangle=-\langle W^{(1)}_{k,\cdot},\mathbf g_k\rangle$. Since $s_j$ depends neither on $\mathbf b^{(1)}$ nor, for $j\neq k$, on $W^{(2)}_{\cdot k}$, \eqref{eq:euler-s} gives $\langle\mathbf t_k,\nabla_\varphi s_j\rangle=-s_k$ if $j=k$ and $0$ otherwise. Hence $\langle W^{(1)}_{k,\cdot},\mathbf g_k\rangle=-\nu_k s_k$, and the first condition of~\eqref{eq:kkt} gives, as in the proof of Proposition~\ref{prop:no-fixed-point}, $\nu_k s_k=\lambda s_k\PenWonek$, that is $\nu_k=\mu_k$ since $s_k=1$. The stationarity condition of~\eqref{eq:constrained} is then $\nabla_\varphi J_\lambda=\bzero$. The same inner products show that $\sum_j\nu_j\nabla_\varphi s_j=\bzero$ forces $\nu=\bzero$: the gradients of the constraints are linearly independent at the regular points of $\Sigma$, as claimed after the proposition.
+
+(iii) By~\eqref{eq:group-action}, $s_k(G_{\bc}\bth)\,W^{(1)}_{k,\cdot}(G_{\bc}\bth)=\frac{s_k(\bth)}{c_k}\,c_kW^{(1)}_{k,\cdot}$. Since $s_k\geq0$, $s_k\PenWonek=\|B_{k,\cdot}\|_1$, and $s=\bone$ on $\Sigma$.
+
+\paragraph{Proof of Proposition~\ref{prop:properties}.}
+(a) $G_{\bc}$ multiplies $\mathbf h^{(1)}_i$ entrywise by $\bc$, whose entries are positive, so that $D^{(1)}_i$ is unchanged and, by positive homogeneity, $\sigma_1(\mathbf h^{(1)}_i)$ is multiplied by $\bc$. The columns of $W^{(2)}$ being divided by $\bc$, $\mathbf h^{(2)}_i$ and all deeper pre-activations are unchanged. So are $f_{\bth}$ and the activation patterns, and, by Proposition~\ref{prop:penalty-scale-invariance}, $J_\lambda$.
+
+(b) By~\eqref{eq:group-action}, $s(G_{\bc}\bth)=s(\bth)\oslash\bc$, so that $G_{s(G_{\bc}\bth)}G_{\bc}\bth=G_{s(\bth)\oslash\bc}\,G_{\bc}\bth=G_{s(\bth)}\bth$: both starting points are retracted onto the same representative, where the gradients coincide. The transport of the moments by $G_{\bc}$, followed by their transport by $G_{s(\bth)\oslash\bc}$, is their transport by $G_{s(\bth)}$, the factors being multiplicative. The moments therefore coincide after the first retraction as well, and the two runs carry out the same operations from then on.
+
+(c) On $\Sigma$, the retraction is the identity. For scalars $x$ and $g$, a threshold $\tau\geq0$ and $D>0$, $x=\soft_{D\tau}(x-Dg)$ holds if and only if $g=-\tau\operatorname{sign}x$ when $x\neq0$, and $|g|\leq\tau$ when $x=0$. Applied to~\eqref{eq:prox-step} with $\tau=\lambda s_k$, $\Wone$ is fixed if and only if the first condition of~\eqref{eq:kkt} holds. On $\varphi$, the first moment becomes $m'=\beta_1m+(1-\beta_1)\nabla_\varphi J_\lambda$, and the step is proportional to $m'$; with $m=\bzero$, both $\varphi$ and $m$ are fixed if and only if $\nabla_\varphi J_\lambda=\bzero$. With Proposition~\ref{prop:formulations}(ii), this proves~(c).
+
+(d) At $\Wone=\bzero$, $\mathbf h^{(1)}_i=\mathbf b^{(1)}$ for every $i$: all observations share their activation patterns, and $\ba_{\cdot k}(\bth^0)=a_{0k}\bone$ with $|a_{0k}|=s_k(\bth^0)=1$ on $\Sigma$. As in the proof of Theorem~\ref{thm:ztffunc}, $\mathbf g_{0,k}=a_{0k}X^\top\hat{\mathbf r}_0(\by)$, and, by the thresholding test of Section~\ref{sec:prox-step}, $\Wone=\bzero$ is left unchanged if and only if $|X_j^\top\hat{\mathbf r}_0(\by)|\leq\lambda$ for every $j$, that is $\lambda\geq\lambda_0(X,\by)$. On $\varphi$, $\mu_k=0$ since $\Wone=\bzero$, so that $\nabla_\varphi J_\lambda=\nabla_\varphi\ell$. The output $\eta_i$ being the same function of $\varphi$ for every $i$, so is $\partial\eta_i/\partial\varphi$, and $\nabla_\varphi\ell=\big(\sum_i\hat r_{0i}\big)\,\partial\eta_1/\partial\varphi$. Since $\hat{\boldsymbol{\tau}}$ yields the optimal constant fit, $c\mapsto\mathcal L_n(c\bone;\by)$ is minimal at $c=\hat\eta$, where its derivative $\sum_i\hat r_{0i}$ vanishes; for the Cox model, $\mathcal L_n$ is invariant under $\bet\mapsto\bet+c\bone$, so that $\sum_i\partial\mathcal L_n/\partial\eta_i=0$ identically. Hence $\nabla_\varphi J_\lambda(\bth^0)=\bzero$, and $\varphi$ is fixed.
 
 \newpage
 \bibliography{biblio}
