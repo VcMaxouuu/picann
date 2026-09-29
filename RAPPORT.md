@@ -101,3 +101,7 @@ Section par section :
 - `fit_phase` : proposer un argument `check_kkt: bool = True` pour rendre public le comportement de `fit`, qui ne relance qu'en dernière phase. Aujourd'hui, `fit` passe par la méthode privée `_fit_phase`.
 - Exposer la sensibilité finale (par exemple un buffer `unit_scale`) permettrait de lire B = s ⊙ W⁽¹⁾ avec les données. Cela changerait `state_dict`, donc je ne l'ai pas fait.
 - Ajouter la perte de Cox (`Regressor.families`), traitée par l'article mais absente du code.
+
+## 7. Simplification de l'article (demande suivante)
+
+22 → 16 pages. On ne garde que ce qui sert : une seule formulation (le problème contraint (C), s = 1), une itération en trois gestes (normaliser, pas proximal sur W⁽¹⁾, pas Adam sur φ avec le terme μ∇s), deux garanties (points fixes = conditions du premier ordre ; point nul fixe ssi λ ≥ λ₀), et l'implémentation en trois paragraphes courts avec un algorithme réduit. Retirés : formulations (Q) et B, groupe 𝒢 et lemme du représentant canonique, points réguliers, lemme d'Euler (réduit à une identité dans l'annexe), équivariance, transport détaillé, dérive de Du et al., discussions WeightNorm/ENorm/Teleportation dans le texte principal, preuve des formulations. Le paragraphe « Rescaling invariance » du Related Work tient en un paragraphe. Version longue conservée dans l'historique git (commit f0df37c).
