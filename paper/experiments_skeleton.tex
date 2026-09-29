@@ -1,0 +1,143 @@
+% ==========================================================================
+% Proposed skeleton of the Experiments section. Not \input in main.tex.
+% Figures refer to paper/sketches/experiments_sketch.png (schematic shapes,
+% not results). Every "TODO" is a simulation still to run.
+% ==========================================================================
+\section{Experiments}\label{sct:exp}
+
+The experiments address five questions, in the order of the paper:
+(Q1) does $\lamDB$ control the selection under the null, whatever the
+architecture (Section~\ref{sec:exp-null});
+(Q2) how accurately is the support recovered as the problem gets harder
+(Section~\ref{sec:exp-transition});
+(Q3) does the warm path recover variables whose effect is purely nonlinear
+(Section~\ref{sec:exp-path});
+(Q4) how do width and depth affect selection (Section~\ref{sec:exp-arch});
+(Q5) how sparse and how predictive is the returned network, and at what cost
+(Sections~\ref{sec:exp-sparsity}--\ref{sec:exp-cost}).
+
+% --------------------------------------------------------------------------
+\subsection{Setup}\label{sec:exp-setup}
+
+\paragraph{Data-generating models.}
+% Rows x_i ~ N(0, Sigma), Sigma_{jk} = rho^{|j-k|}, rho in {0, 0.5}.
+% Support S of size s, drawn at random. Response through
+%   (L)  linear:       f(x) = sum_{j in S} beta_j x_j
+%   (A)  additive:     f(x) = sum_{j in S} g_j(x_j), g_j in {sin(2x), |x|, x^2 - 1, tanh(2x)}
+%   (I)  interactions: f(x) = sum over disjoint pairs x_j x_k (no marginal effect)
+% Signal scaled to a fixed SNR = Var f(X) / sigma^2.
+% Regression: y = f(x) + sigma eps; binary: y ~ Bernoulli(sigmoid(f(x)));
+% survival: Cox model with hazard exp(f(x)), exponential baseline,
+% independent censoring at rate 30%.
+
+\paragraph{Methods.}
+% PIC-ANN (ours), alpha = 0.05, M = 5 phases, default lr / tol.
+% Competitors (only where a comparison is meaningful, see each subsection):
+%   - sqrt-lasso with the same pivotal calibration (linear reference);
+%   - lasso with lambda by 10-fold CV;
+%   - LassoNet (Lemhadri et al.), path + CV;
+%   - sparse-input network with group penalty (Feng and Simon), CV;
+%   - stochastic gates STG (Yamada et al.), CV;
+%   - DeepPINK (Lu et al.) with model-X knockoffs, target FDR q = 0.1.
+% Ablations of ours: (i) no normalization, plain l1 on W1 at the same level;
+% (ii) PIC-ANN architecture with lambda chosen by CV instead of lambda_DB;
+% (iii) M = 1 (start directly at lambda_DB).
+
+\paragraph{Metrics.}
+% P(exact support recovery) = P(S_hat = S); TPR; false discovery proportion;
+% |S_hat|; P(S_hat = empty) under H0; fraction of non-zero (effective)
+% weights; test error after refitting (MSE / AUC / C-index); wall-clock time,
+% tuning included. 100 replications per setting (200 under H0).
+
+% --------------------------------------------------------------------------
+\subsection{Calibration under the null}\label{sec:exp-null}
+% E1 -- Figure: P(S_hat = empty) under H0 vs architecture, band 1 - alpha
+%       +/- 2 MC standard errors.
+% Grid: loss in {regression, binary, Cox}; n in {100, 500}; p in {20, 200, 2000};
+%       hidden in {none, (16), (64), (32,32), (64,64,64)}; alpha in {0.05, 0.1}.
+% Shows: the level holds for every architecture (Theorem ztffunc: lambda_0
+%        does not involve the network), and for the three losses (pivotality).
+% Compare: ablation (i) (the level drifts with the scale of the
+%        initialization) and CV-tuned competitors (no control at all).
+% TODO(sim)
+
+% --------------------------------------------------------------------------
+\subsection{Support recovery and phase transition}\label{sec:exp-transition}
+% E2a/E2b -- Figure: P(exact recovery) vs sparsity s, one curve per method,
+%       for (L) and (A); n = 500, p = 1000, rho in {0, 0.5}.
+%       A second axis of difficulty in an appendix figure: SNR at fixed s.
+% Shows: on linear data PIC-ANN tracks the sqrt-lasso with the same
+%       calibration (no price for the network); on nonlinear data it keeps a
+%       sharp transition where linear methods fail and CV methods over-select.
+% E2c -- Figure: TPR vs false discovery proportion at one setting
+%       (s = 10, (A), rho = 0.5), mean +/- sd over replications; DeepPINK
+%       appears here, at its nominal FDR.
+% Compare: all competitors.
+% TODO(sim)
+
+% --------------------------------------------------------------------------
+\subsection{Purely nonlinear effects and the warm path}\label{sec:exp-path}
+% E3 -- Figure: detection rate vs number of phases M in {1, ..., 10}, split
+%       into variables with a marginal effect and interaction-only variables
+%       (model (L)+(I)); mean number of false positives on the same axes.
+% Shows: at M = 1 interaction-only variables are cut before the network
+%       learns them (their null score is zero, Section~\ref{sec:warm}); the path
+%       recovers them without inflating false positives.
+% Compare: ours only (ablation iii).
+% TODO(sim)
+
+% --------------------------------------------------------------------------
+\subsection{Width and depth}\label{sec:exp-arch}
+% E4 -- Figure: heatmap of P(exact recovery) over width in {8, ..., 256}
+%       and depth in {1, 2, 3, 4}, model (A); the same grid for
+%       P(S_hat = empty) under H0 in the appendix.
+% Shows: one calibration serves every architecture; recovery is stable once
+%       the network is wide enough to represent f, and does not degrade as
+%       the network grows (over-parameterization is not over-selection).
+% Compare: ours only.
+% TODO(sim)
+
+% --------------------------------------------------------------------------
+\subsection{Sparsity of the fitted network}\label{sec:exp-sparsity}
+% E5 -- Figure: fraction of non-zero (effective) weights vs p, s = 5 fixed,
+%       log-log; dense MLP as reference; table of the fraction per layer
+%       (count_effective_weights).
+% Shows: the number of effective weights grows with s, not with p.
+% Compare: LassoNet and the group-penalty network (both sparse in W1).
+% TODO(sim)
+
+% --------------------------------------------------------------------------
+\subsection{Prediction after refitting}\label{sec:exp-prediction}
+% E6 -- Table: test error (MSE / AUC / C-index) after the optional refit
+%       of Section~\ref{sec:optimization}, for PIC-ANN, dense MLP, oracle MLP on S, lasso-CV,
+%       LassoNet, random forest; models (L), (A), (I); the three tasks.
+% Shows: selecting first costs nothing in prediction and approaches the
+%       oracle when p >> s.
+% Compare: all.
+% TODO(sim)
+
+% --------------------------------------------------------------------------
+\subsection{Real data}\label{sec:exp-real}
+% E7 -- One data set per task (e.g. a gene-expression regression or
+%       classification data set with p >> n, and a survival cohort).
+%       Augment each with permuted copies of every variable: a selected copy
+%       is a known false discovery.
+% Table: |S_hat|, number of selected permuted copies, test performance after
+%       refit, time. Compare: all.
+% TODO(sim)
+
+% --------------------------------------------------------------------------
+\subsection{Computational cost}\label{sec:exp-cost}
+% E8 -- Figure: wall-clock time of one fit, calibration and tuning included,
+%       vs n (p = 1000) and vs p (n = 500), log-log.
+% Shows: one path, no cross-validation; the Monte Carlo calibration is a
+%       matrix product per draw.
+% Compare: CV-tuned competitors.
+% TODO(sim)
+
+% --------------------------------------------------------------------------
+% Appendix: optimization diagnostics (ours only)
+%  - normalization on/off, multiplier term on/off: exact recovery and the
+%    distribution of s_k at the end of the fit (hanging neurons);
+%  - sensitivity to lr, tol, M, lambda_ratio, n_epochs;
+%  - stability of lambda_DB in the number of Monte Carlo draws.
