@@ -228,10 +228,8 @@ Given data $(X,\by)$, we consider the training problem
 \begin{equation}\label{eq:optiprob}
     \min_{\bth \in \R^\gamma} J_\lambda(\bth),
     \qquad
-    J_\lambda(\bth)=\ell(\bth)+
+    J_\lambda(\bth)=\mathcal{L}_n\left(f_{\bth}(X);\by\right)+
     \lambda\sum_{k=1}^{p_1}s_k(\bth)\PenWonek,
-    \qquad
-    \ell(\bth)=\mathcal{L}_n\left(f_{\bth}(X);\by\right),
     \tag{P}
 \end{equation}
 where $\mathcal{L}_n(\bet;\by)$ is a data-dependent goodness-of-fit measure of the vector of outputs, and $\lambda\geq0$ is the regularization parameter controlling the strength of the adaptive first-layer penalty, set to the level $\lamDB$ developed in Section \ref{sec:lambda-calibration}. The full expression $J_\lambda$ is referred to as the cost function. Throughout this work, we consider three statistical learning settings: regression, binary classification, and survival analysis under the Cox proportional hazards model. In each case, the goodness-of-fit term $\mathcal{L}_n$ is chosen with a specific normalization that will play a central role in the calibration of $\lambda$. We consider the same three losses as \citet{PIC-SMS2026}.
@@ -262,12 +260,12 @@ These particular forms and normalizations are not merely conventional
 choices. They are selected so that the score of the loss at the null model is a pivotal quantity, free of any nuisance parameters. This property is what ultimately allows our choice of regularization level $\lamDB$ developed in Section~\ref{sec:lambda-calibration}.
 
 \subsection{The Normalized Problem}\label{sec:formulations}
-Since the rescalings~\eqref{eq:positive-rescaling} change neither the fit nor the penalty (Proposition~\ref{prop:penalty-scale-invariance}), nothing is lost by restricting~\eqref{eq:optiprob} to normalized networks (Proposition~\ref{prop:normalization}). On $\Thetaone$, the adaptive penalty becomes a plain lasso on the first layer:
+Since the rescalings~\eqref{eq:positive-rescaling} change neither the fit nor the penalty, nothing is lost by restricting~\eqref{eq:optiprob} to normalized networks (Proposition~\ref{prop:normalization}). On $\Thetaone$, the adaptive penalty becomes a plain lasso on the first layer:
 \begin{equation}\label{eq:constrained}
-    \min_{\bth\in\Thetaone}\ \ell(\bth)+\lambda\PenWone .
+    \min_{\bth\in\Thetaone}\ \mathcal{L}_n\left(f_{\bth}(X);\by\right)+\lambda\PenWone .
     \tag{C}
 \end{equation}
-Problems~\eqref{eq:optiprob} and~\eqref{eq:constrained} are equivalent: they have the same optimal value, $\Nrm(\hat\bth)$ solves~\eqref{eq:constrained} whenever $\hat\bth$ solves~\eqref{eq:optiprob}, and every solution of~\eqref{eq:constrained} solves~\eqref{eq:optiprob}. By Proposition~\ref{prop:normalization}(iii), the selected set $\hat S=\{j:\hat W^{(1)}_{\cdot j}\neq\bzero\}$ is the same for both. \emph{From now on, we work with~\eqref{eq:constrained}}: both the calibration of $\lambda$ and the optimization become statements about a lasso.
+Problems~\eqref{eq:optiprob} and~\eqref{eq:constrained} are equivalent: they have the same optimal value, $\Nrm(\hat\bth)$ solves~\eqref{eq:constrained} whenever $\hat\bth$ solves~\eqref{eq:optiprob}, and every solution of~\eqref{eq:constrained} solves~\eqref{eq:optiprob}. Moreover, by Proposition~\ref{prop:normalization} the selected set $\hat S=\{j:\hat W^{(1)}_{\cdot j}\neq\bzero\}$ is the same for both. From now on, we work with~\eqref{eq:constrained}.
 
 Let $\varphi$ denote all the parameters other than $\Wone$ (every bias and $W^{(2)},\ldots,W^{(L)}$), and let $\br=\nabla_{\bet}\mathcal L_n(\bet;\by)$ at $\bet=f_{\bth}(X)$ be the gradient of the loss with respect to the outputs. The following result gives the conditions that the calibration of Section~\ref{sec:lambda-calibration} and the algorithm of Section~\ref{sec:optimization} rely on. It holds where the activation patterns are locally constant, that is, where no hidden pre-activation vanishes at any observation.
 
