@@ -38,7 +38,8 @@ architecture (Section~\ref{sec:exp-null});
 %   - LassoNet (Lemhadri et al.), path + CV;
 %   - sparse-input network with group penalty (Feng and Simon), CV;
 %   - stochastic gates STG (Yamada et al.), CV;
-%   - DeepPINK (Lu et al.) with model-X knockoffs, target FDR q = 0.1.
+%   - Boruta on a random forest (Kursa and Rudnicki), confirmed variables at
+%     alpha = 0.05 (benchmarks/boruta_rf.py).
 % Ablations of ours: (i) no normalization, plain l1 on W1 at the same level;
 % (ii) PIC-ANN architecture with lambda chosen by CV instead of lambda_DB;
 % (iii) M = 1 (start directly at lambda_DB).
@@ -70,8 +71,7 @@ architecture (Section~\ref{sec:exp-null});
 %       calibration (no price for the network); on nonlinear data it keeps a
 %       sharp transition where linear methods fail and CV methods over-select.
 % E2c -- Figure: TPR vs false discovery proportion at one setting
-%       (s = 10, (A), rho = 0.5), mean +/- sd over replications; DeepPINK
-%       appears here, at its nominal FDR.
+%       (s = 10, (A), rho = 0.5), mean +/- sd over replications.
 % Compare: all competitors.
 % TODO(sim)
 
