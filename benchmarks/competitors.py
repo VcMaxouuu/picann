@@ -15,9 +15,10 @@ celui de deeppic : Adam avec ``lr = 1e-2``, batch complet, au plus 1000
 époques par ajustement, pas de réajustement après sélection. LassoNet et
 STG standardisent ``X`` en interne (moyenne 0, variance 1 au sens 1/n) ;
 DeepPINK garde ``X`` tel quel, les knockoffs devant suivre la loi de ``X``.
-En régression, ``y`` est aussi centré-réduit en interne, ce qui rend la
-perte quadratique indépendante de l'échelle de ``y`` ; les prédictions
-sont remises à l'échelle d'origine.
+En régression, LassoNet et STG centrent-réduisent aussi ``y`` en interne,
+ce qui rend la perte quadratique indépendante de l'échelle de ``y`` ; les
+prédictions sont remises à l'échelle d'origine. DeepPINK garde ``y`` tel
+quel.
 
 Dépendances : numpy, scikit-learn, joblib, torch, lassonet, stg, Boruta,
 knockpy (avec tqdm, sortedcontainers, h5py et lifelines, requis par
@@ -692,8 +693,10 @@ class DeepPINKSelector:
     Le filtre knockoff+ ne retient rien tant qu'il ne peut pas faire au
     moins ``1 / fdr`` découvertes, soit 5 avec ``q = 0.2`` : avec moins de
     cinq variables pertinentes, DeepPINK ne sélectionne rien par
-    construction. ``X`` n'est pas standardisé (les knockoffs doivent
-    suivre la loi de ``X``) ; ``y`` l'est en régression.
+    construction. Ni ``X`` ni ``y`` ne sont standardisés : les knockoffs
+    doivent suivre la loi de ``X``, et ``y`` entre tel quel dans la perte.
+    Comme la perte est une somme et le niveau de la pénalité ℓ1 est fixe,
+    l'échelle de ``y`` règle le poids relatif des deux.
     ``predict`` ajuste à la demande un MLP dense de même architecture sur
     les variables retenues : le réseau de DeepPINK prend en entrée les
     knockoffs, qui n'existent pas pour de nouvelles observations.
@@ -728,10 +731,7 @@ class DeepPINKSelector:
         if self.task == "classification":
             self.classes_, ys = _encode_binary(y)
         else:
-            y = y.astype(np.float64)
-            self.y_mean_ = float(y.mean())
-            self.y_std_ = float(y.std()) or 1.0
-            ys = (y - self.y_mean_) / self.y_std_
+            ys = y.astype(np.float64)
 
         np.random.seed(self.random_state)  # knockpy tire les knockoffs avec NumPy
         torch.manual_seed(self.random_state)
@@ -771,7 +771,7 @@ class DeepPINKSelector:
         if not sel:  # aucune variable : constante (moyenne ou classe majoritaire)
             if self.task == "classification":
                 return np.full(X.shape[0], self.classes_[np.bincount(self._y).argmax()])
-            return np.full(X.shape[0], self.y_mean_)
+            return np.full(X.shape[0], self._y.mean())
         if self.net_ is None:
             self.scaler_ = StandardScaler().fit(self._X[:, sel])
             self.net_ = _fit_mlp(
@@ -787,4 +787,4 @@ class DeepPINKSelector:
             out = self.net_(torch.from_numpy(self.scaler_.transform(X[:, sel]).astype(np.float32)))
         if self.task == "classification":
             return self.classes_[out.argmax(dim=1).numpy()]
-        return out.numpy().ravel() * self.y_std_ + self.y_mean_
+        return out.numpy().ravel()
